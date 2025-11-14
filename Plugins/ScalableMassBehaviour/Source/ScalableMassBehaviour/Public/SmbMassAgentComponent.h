@@ -1,4 +1,4 @@
-﻿// Copyright 2025 Land Chaunax
+﻿// Copyright © 2025 Land Chaunax, All rights reserved.
 
 #pragma once
 
