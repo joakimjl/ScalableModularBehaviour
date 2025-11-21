@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "MassAgentComponent.h"
 #include "SmbFragments.h"
 #include "Components/ActorComponent.h"
 #include "SmbAnimComp.generated.h"
@@ -37,6 +38,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Smb")
 	float CurrentFrame = -1.f;
 
+	/** Is the movement controlled from Mass, or Actor **/
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Smb")
 	bool bControlledFromMass = false;
 

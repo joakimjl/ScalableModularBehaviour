@@ -15,9 +15,14 @@ class SCALABLEMASSBEHAVIOUR_API USmbMassAgentComponent : public UMassAgentCompon
 public:
 	// Sets default values for this component's properties
 	USmbMassAgentComponent();
-	
+
+	/* Gets health of attached Mass fragment */
 	UFUNCTION(BlueprintCallable, Category = "Smb")
 	float GetHealth() const;
+
+	/* NOTE: This function may only be called after the SmbMassAgentComponent is finished initializing, (FIX TBD) */
+	UFUNCTION(BlueprintCallable, Category = "Smb")
+	void SetTeam(int32 NewTeam);
 
 protected:
 	// Called when the game starts

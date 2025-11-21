@@ -27,7 +27,7 @@ UAnimationProcessor::UAnimationProcessor()
 {
 	bAutoRegisterWithProcessingPhases = true;
 	ExecutionFlags = (int32)(EProcessorExecutionFlags::AllNetModes);
-	ExecutionOrder.ExecuteInGroup = UE::Mass::ProcessorGroupNames::Movement;
+	ExecutionOrder.ExecuteAfter.Add(UE::Mass::ProcessorGroupNames::Movement);
 }
 
 void UAnimationProcessor::ConfigureQueries(const TSharedRef<FMassEntityManager>& EntityManager)
@@ -87,7 +87,7 @@ void UAnimationProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 
 			if (AnimationFragment.LerpAlpha > 0)
 			{
-				AnimationFragment.LerpAlpha = FMath::Clamp(AnimationFragment.LerpAlpha-DeltaTime*3.f,0.f,1.f);
+				AnimationFragment.LerpAlpha = FMath::Clamp(AnimationFragment.LerpAlpha-DeltaTime*AnimationFragment.BlendSpeed,0.f,1.f);
 			}
 			for (int i = 0; i < Ordering.Num(); ++i)
 			{
@@ -123,7 +123,8 @@ void UAnimationProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 				AnimationFragment.PrevStart = StartFrame;
 				AnimationFragment.PrevEnd = EndFrame;
 			}
-			if (RepresentationFragment.CurrentRepresentation == EMassRepresentationType::HighResSpawnedActor)
+			if (RepresentationFragment.CurrentRepresentation == EMassRepresentationType::HighResSpawnedActor || RepresentationFragment.CurrentRepresentation == EMassRepresentationType::LowResSpawnedActor
+				|| RepresentationFragment.PrevRepresentation == EMassRepresentationType::HighResSpawnedActor || RepresentationFragment.PrevRepresentation == EMassRepresentationType::LowResSpawnedActor)
 			{
 				USmbAnimComp* ScaleComponent = nullptr;
 				if (ActorFragment.IsValid() && ActorFragment.IsOwnedByMass())
@@ -157,7 +158,7 @@ void UAnimationProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 					//UE_LOG(LogTemp, Warning, TEXT("Current Frame: %f"), CurrentFrame);
 				}
 			}
-			if (RepresentationFragment.CurrentRepresentation == EMassRepresentationType::StaticMeshInstance)
+			if (RepresentationFragment.CurrentRepresentation == EMassRepresentationType::StaticMeshInstance || RepresentationFragment.PrevRepresentation == EMassRepresentationType::StaticMeshInstance)
 			{
 				float CurrentFrame = 1;
 				if (EndFrame != 0.f)
@@ -265,6 +266,8 @@ void URegisterProcessor::Execute(FMassEntityManager& EntityManager, FMassExecuti
 					ECollisionChannel::ECC_WorldStatic);
 				LocationDataFragment.bTraceResultIn = false;
 			}
+
+			// If Entities didn't move on average last checks, set animation to walk.
 			LocationDataFragment.ExponentialMove /= 1.2f;
 			LocationDataFragment.ExponentialMove += (LocationDataFragment.OldLocation-Transform.GetLocation()).Size();
 			if (LocationDataFragment.ExponentialMove <= 40.f)
@@ -580,7 +583,7 @@ void UHeightProcessor::ConfigureQueries(const TSharedRef<FMassEntityManager>& En
 
 void UHeightProcessor::Execute(FMassEntityManager& EntityManager, FMassExecutionContext& Context)
 {
-	float DeltaTime = FMath::Min(Context.GetDeltaTimeSeconds(),0.01f);
+	float DeltaTime = FMath::Min(Context.GetDeltaTimeSeconds(),0.21f);
 	
 	
 	EntityQuery.ParallelForEachEntityChunk(Context, [DeltaTime](FMassExecutionContext& Context)

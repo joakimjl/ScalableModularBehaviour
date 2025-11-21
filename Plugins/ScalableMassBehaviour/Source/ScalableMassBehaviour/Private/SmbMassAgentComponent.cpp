@@ -47,3 +47,12 @@ float USmbMassAgentComponent::GetHealth() const
 	return -1.f;
 }
 
+void USmbMassAgentComponent::SetTeam(int32 NewTeam)
+{
+	if (!EntityManager) return;
+	FTeamFragment* TeamFragment = EntityManager->GetFragmentDataPtr<FTeamFragment>(AgentHandle);
+	if (!TeamFragment) return;
+	TeamFragment->TeamID = NewTeam;
+}
+
+

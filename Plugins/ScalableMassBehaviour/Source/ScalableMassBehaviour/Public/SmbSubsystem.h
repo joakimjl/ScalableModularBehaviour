@@ -259,8 +259,11 @@ public:
 	void EditMassConfig(FMassEntityConfig &MassEntityConfig);
 
 	/* Entities given will take InDamage */
-	UFUNCTION(blueprintCallable, Category = "Smb")
+	UFUNCTION(BlueprintCallable, Category = "Smb")
 	void DamageSelectedEntities(TArray<FSmbEntityData> SelectedEntities, float Damage, int32 OwnTeam, int32 &AmountKilled);
+
+	UFUNCTION(BlueprintCallable, Category = "Smb")
+	void GetEntitiesLocationsAndHealth(TArray<FSmbEntityData> SelectedEntities, TArray<FVector>& Locations, TArray<float>& HealthPercentage, FVector Offset = FVector::ZeroVector, int32 OwnTeam = -1);
 
 	UPROPERTY()
 	FResourceReqMap ReqMap = FResourceReqMap();

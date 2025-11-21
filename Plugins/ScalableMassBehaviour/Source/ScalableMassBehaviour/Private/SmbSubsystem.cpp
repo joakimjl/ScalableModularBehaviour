@@ -546,10 +546,11 @@ void USmbSubsystem::DestroyStalledEntity()
 
 float USmbSubsystem::FindEntityAnimationTime(USmbAnimComp* SmbComponent)
 {
-	if (UMassAgentComponent* MassAgent = SmbComponent->GetOwner()->FindComponentByClass<UMassAgentComponent>())
+	if (UMassAgentComponent* MassAgent = Cast<UMassAgentComponent>(SmbComponent->GetOwner()->GetComponentByClass(UMassAgentComponent::StaticClass())))
 	{
 		if (!EntityManagerPtr) return -1.f;
-		if (!EntityManagerPtr->IsEntityValid(MassAgent->GetEntityHandle())) return -1.f;
+		//UE_LOG(LogTemp, Warning, TEXT("Found agent component with %i and %i "), MassAgent->GetEntityHandle().Index, MassAgent->GetEntityHandle().SerialNumber);
+		if (!EntityManagerPtr->IsEntityValid(MassAgent->GetEntityHandle())) return 1.f;
 		//FAnimationFragment& AnimationFragment = EntityManagerPtr->GetFragmentDataChecked<FAnimationFragment>(MassAgent->GetEntityHandle());
 		FAnimationFragment* AnimationFragmentPtr = EntityManagerPtr->GetFragmentDataPtr<FAnimationFragment>(MassAgent->GetEntityHandle());
 		if (!AnimationFragmentPtr) return 1.f;
@@ -656,6 +657,27 @@ TArray<FSmbEntityData> USmbSubsystem::SelectEntitiesInside(FVector TopLeftLocati
 
 	return SelectedEntities;
 }
+
+void USmbSubsystem::GetEntitiesLocationsAndHealth(TArray<FSmbEntityData> SelectedEntities, TArray<FVector>& Locations, TArray<float>& HealthPercentage, FVector Offset, int32 OwnTeam)
+{
+	Locations.Empty();
+	HealthPercentage.Empty();
+
+	TArray<FMassEntityHandle> Signaled = TArray<FMassEntityHandle>();
+	for (auto EntityData : SelectedEntities)
+	{
+		FMassEntityHandle Handle = FMassEntityHandle(EntityData.Index, EntityData.SerialNumber);
+		if (!EntityManagerPtr->IsEntityValid(Handle)) continue;
+		FTransformFragment* TransformFragment = EntityManagerPtr->GetFragmentDataPtr<FTransformFragment>(Handle);
+		FDefenceFragment* DefenceFragment = EntityManagerPtr->GetFragmentDataPtr<FDefenceFragment>(Handle);
+		if (TransformFragment && DefenceFragment)
+		{
+			Locations.Add(TransformFragment->GetTransform().GetLocation() + Offset);
+			HealthPercentage.Add(DefenceFragment->HP/DefenceFragment->MaxHP);
+		}
+	}
+}
+
 
 void USmbSubsystem::DamageSelectedEntities(TArray<FSmbEntityData> SelectedEntities, float Damage, int32 OwnTeam, int32 &AmountKilled)
 {

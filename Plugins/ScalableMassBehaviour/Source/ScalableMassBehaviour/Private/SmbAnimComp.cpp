@@ -56,6 +56,7 @@ void USmbAnimComp::PerformAnimationChange(float DeltaTime)
 		CurrentFrame = Time;
 		//UE_LOG(LogTemp, Display, TEXT("Time"));
 	}
+	//UE_LOG(LogTemp, Display, TEXT("Is now %i and %i "), GetEntityHandle().SerialNumber, GetEntityHandle().Index);
 	//GetOwner()->SetActorLocation(Location);
 	ACharacter* Character = Cast<ACharacter>(GetOwner());
 	if (!Character) return;

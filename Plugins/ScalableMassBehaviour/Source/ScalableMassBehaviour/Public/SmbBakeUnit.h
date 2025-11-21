@@ -16,6 +16,7 @@
 #include "SmbBakeUnit.generated.h"
 
 
+class ASmbSpawner;
 class UObject;
 class UMaterialInstanceConstant;
 class UMaterial;
@@ -39,9 +40,12 @@ class SCALABLEMASSBEHAVIOUR_API USmbBlueprintLibrary: public UBlueprintFunctionL
 		TMap<EAnimationState, UAnimSequence*> AnimationMap, UStaticMesh* StaticMesh = nullptr);
 #endif
 
+	/* NOTE: Only use this function after the OnSpawnFinished event from MassSpawners. */
+	UFUNCTION(BlueprintCallable, Category = "Smb")
+	static bool SetTeamAtSpawn(ASmbSpawner* MassSpawner, int32 NewTeam);
+
 	UFUNCTION(BlueprintCallable, Category = "Smb")
 	static float GetAnimationFramerate(UAnimSequence* AnimSequence);
-
 	
 	//UFUNCTION(BlueprintCallable, Category = "Smb")
 	//static void ChangeTeam(UMassEntityConfigAsset* MassEntityConfigAsset, int32 NewTeam);

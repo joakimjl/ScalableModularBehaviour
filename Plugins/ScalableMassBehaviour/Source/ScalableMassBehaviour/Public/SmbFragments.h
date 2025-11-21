@@ -31,13 +31,15 @@ struct FResourceFragment : public FMassFragment
 		return Copy;
 	}
 
+	/* If this entity should receive bonus resources
+	 * (Note resource gathering will be implemented to abilities soon instead) */
 	UPROPERTY(EditAnywhere, Category = "Smb")
 	TMap<EProcessable, float> BonusMap = TMap<EProcessable, float>();
 
-	UPROPERTY(EditAnywhere, Category = "Smb")
+	UPROPERTY()
 	TMap<EProcessable, int32> Carrying = TMap<EProcessable, int32>();
 
-	UPROPERTY(EditAnywhere, Category = "Smb")
+	UPROPERTY()
 	float TimeSinceGatherStart = 0.f;
 };
 
@@ -79,16 +81,21 @@ struct FAnimationFragment : public FMassFragment
 	/* Offset Timing i.e., changes timing so ISM material instance starts on the correct time */
 	UPROPERTY(EditAnywhere, Category = "Smb")
 	float AnimOffsetTime = 0.f;
-
-	UPROPERTY(EditAnywhere, Category = "Smb")
+	
+	UPROPERTY()
 	float TimeInCurrentAnimation = 0.f;
 
-	UPROPERTY(EditAnywhere, Category = "Smb")
+	UPROPERTY()
 	float LerpAlpha = 0.f;
+
+	/* How quickly the vertex animation should blend between animations */
+	UPROPERTY(EditAnywhere, Category = "Smb")
+	float BlendSpeed = 5.f;
 	
 	UPROPERTY()
 	FName AnimationName = FName("None");
-	
+
+	/* Blueprint actor offset to keep correct synced locations */ 
 	UPROPERTY(EditAnywhere, Category = "Smb")
 	FVector ActorOffset = FVector::ZeroVector;
 
@@ -103,7 +110,8 @@ struct FAnimationFragment : public FMassFragment
 
 	UPROPERTY()
 	float PrevEnd = 0.f;
-	
+
+	/* How quick to play the vertex animation, 1 is 100% speed*/
 	UPROPERTY(EditAnywhere, Category = "Smb")
 	float AnimationSpeed = 1.f;
 };
@@ -224,7 +232,7 @@ struct FTeamFragment : public FMassFragment
 	UPROPERTY(EditAnywhere, Category = "Smb")
 	int32 TeamID = 0;
 
-	/* For visuals, functionality TBD */
+	/* For additional visuals, functionality TBD */
 	UPROPERTY(EditAnywhere, Category = "Smb")
 	bool bIsSelected = false;
 };
@@ -402,7 +410,7 @@ struct FLocationDataFragment : public FMassFragment
 
 	/* Time Since Last */
 	UPROPERTY()
-	float TimeSince = 0.f;
+	float TimeSince = 9999.f;
 
 	/* How frequently should entity update position in the grid (Base only larger if lower LOD) */
 	UPROPERTY(EditAnywhere, Category = "Smb")

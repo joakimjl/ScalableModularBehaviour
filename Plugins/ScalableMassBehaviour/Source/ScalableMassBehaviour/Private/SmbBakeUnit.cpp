@@ -2,6 +2,8 @@
 
 
 #include "SmbBakeUnit.h"
+#include "MassSpawner.h"
+#include "MassEntityTemplateRegistry.h"
 
 #if WITH_EDITOR
 #include "AssetToolsModule.h"
@@ -16,8 +18,10 @@
 
 #include "MassCrowdRepresentationSubsystem.h"
 #include "ScalableMassBehaviour.h"
+#include "SmbSpawner.h"
 #include "SmbTraits.h"
 #include "Animation/AnimSequence.h"
+#include "Misc/DefinePrivateMemberPtr.h"
 
 
 DEFINE_LOG_CATEGORY_STATIC(LogBlueprintFuncLibrary, Log, All);
@@ -76,7 +80,6 @@ UMaterialInstanceConstant* USmbBlueprintLibrary::CreateMaterialInstance(FString 
 	return nullptr;
 }
 
-
 bool USmbBlueprintLibrary::SetAnimationsInConfig(UMassEntityConfigAsset* MassEntityConfigAsset, TMap<EAnimationState,
 	UAnimSequence*> AnimationMap, UStaticMesh* StaticMesh)
 {
@@ -134,8 +137,24 @@ bool USmbBlueprintLibrary::SetAnimationsInConfig(UMassEntityConfigAsset* MassEnt
 	return false;
 }
 
-
 #endif
+
+bool USmbBlueprintLibrary::SetTeamAtSpawn(ASmbSpawner* SmbSpawner, int32 NewTeam)
+{
+	if (!SmbSpawner) return false;
+	TArray<FMassEntityHandle>& Handles = SmbSpawner->GetLatestSpawned();
+	FMassEntityManager* EntityManager = EntityManager = UE::Mass::Utils::GetEntityManager(SmbSpawner->GetWorld());
+	if (!EntityManager) return false;
+	if (Handles.Num() <= 0) return false;
+	for (FMassEntityHandle Handle : Handles)
+	{
+		if (!EntityManager->IsEntityValid(Handle)) continue;
+		FTeamFragment* TeamFragment = EntityManager->GetFragmentDataPtr<FTeamFragment>(Handle);
+		if (!TeamFragment) continue;
+		TeamFragment->TeamID = NewTeam;
+	}
+	return true;
+}
 
 float USmbBlueprintLibrary::GetAnimationFramerate(UAnimSequence* AnimSequence)
 {
