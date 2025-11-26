@@ -36,8 +36,7 @@ class SCALABLEMASSBEHAVIOUR_API USmbBlueprintLibrary: public UBlueprintFunctionL
 	static UMaterialInstanceConstant* CreateMaterialInstance(FString AssetPath, FString AssetName, UMaterial* ParentMaterial);
 
 	UFUNCTION(BlueprintCallable, Category = "Smb")
-	static bool SetAnimationsInConfig(UMassEntityConfigAsset* MassEntityConfigAsset,
-		TMap<EAnimationState, UAnimSequence*> AnimationMap, UStaticMesh* StaticMesh = nullptr);
+	static bool SetAnimationsInConfig(UMassEntityConfigAsset* MassEntityConfigAsset, TMap<EAnimationState, UAnimSequence*> AnimationMap, UStaticMesh* StaticMesh = nullptr);
 #endif
 
 	/* NOTE: Only use this function after the OnSpawnFinished event from MassSpawners. */

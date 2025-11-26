@@ -22,7 +22,7 @@ public:
 
 	/* NOTE: This function may only be called after the SmbMassAgentComponent is finished initializing, (FIX TBD) */
 	UFUNCTION(BlueprintCallable, Category = "Smb")
-	void SetTeam(int32 NewTeam);
+	bool SetTeam(int32 NewTeam);
 
 protected:
 	// Called when the game starts

@@ -36,6 +36,35 @@ class USmbSubsystem;
  * };
  */
 
+USTRUCT()
+struct FGetOwnLocationInstanceData
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, Category = Output)
+	FVector OwnLocation = FVector::ZeroVector;
+	UPROPERTY(EditAnywhere, Category = Output)
+	FMassTargetLocation TargetLocation = FMassTargetLocation();
+};
+
+USTRUCT(meta = (DisplayName = "SMB Get Own Location"))
+struct FGetOwnLocation : public FMassStateTreeTaskBase
+{
+	GENERATED_BODY()
+
+	using FInstanceDataType = FGetOwnLocationInstanceData;
+
+	FGetOwnLocation();
+
+	virtual bool Link(FStateTreeLinker& Linker) override;
+	virtual const UStruct* GetInstanceDataType() const override { return FGetOwnLocationInstanceData::StaticStruct(); };
+	
+	virtual EStateTreeRunStatus EnterState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const override;
+	virtual void GetDependencies(UE::MassBehavior::FStateTreeDependencyBuilder& Builder) const override;
+	
+	TStateTreeExternalDataHandle<FTransformFragment> EntityTransformHandle;
+};
+
 struct FMassMoveTargetFragment;
 
 USTRUCT()
@@ -43,11 +72,14 @@ struct FGetRandomLocationInRangeInstanceData
 {
 	GENERATED_BODY()
 
-	UPROPERTY(EditAnywhere, Category = Input)
+	/* If it should be a fully new location (true) or related to the previous walk target (false, if the entity standing idle, this makes sense) */
+	UPROPERTY(EditAnywhere, Category = "Smb");
+	bool bNewLocation = true;
+	UPROPERTY(EditAnywhere, Category = "Smb", meta = (EditCondition = "bNewLocation"))
 	FVector InLocation = FVector::DownVector;
-	UPROPERTY(EditAnywhere, Category = Input)
-	float Radius = 0.f;
-	UPROPERTY(EditAnywhere, Category = Input)
+	UPROPERTY(EditAnywhere, Category = "Smb")
+	float RandomRadiusRange = 0.f;
+	UPROPERTY(EditAnywhere, Category = "Smb")
 	float AcceptableWalkRadius = 0.f;
 	UPROPERTY(EditAnywhere, Category = Output)
 	FMassTargetLocation TargetLocation;
@@ -89,6 +121,7 @@ struct FGetProcessableLocationInstanceData
 	FMassTargetLocation TargetLocation = FMassTargetLocation();
 };
 
+/* This task will have some rework done soon and will be integrated to the Ability system. */
 USTRUCT(meta = (DisplayName = "SMB Get Processable of Type"))
 struct FGetProcessableLocation : public FMassStateTreeTaskBase
 {
@@ -289,7 +322,7 @@ struct FEnemyDistanceConditionInstanceData
 	UPROPERTY(EditAnywhere, Category = Input)
 	FSmbEntityData InEnemy = FSmbEntityData();
 
-	UPROPERTY(EditAnywhere, Category = Input)
+	UPROPERTY(EditAnywhere, Category = "Smb")
 	float AcceptableDistance = 50.f;
 
 	UPROPERTY(EditAnywhere, Category = Output)
@@ -325,7 +358,7 @@ struct FFindClosestEnemyInstanceData
 {
 	GENERATED_BODY()
 
-	UPROPERTY(EditAnywhere, Category = Input)
+	UPROPERTY(EditAnywhere, Category = "Smb")
 	float MaxDistance = 1000.f;
 	
 	UPROPERTY(EditAnywhere, Category = Output)
@@ -334,6 +367,7 @@ struct FFindClosestEnemyInstanceData
 	bool bFoundEntityTarget = false;
 };
 
+/* Works for finding enemies but using internal processor that always runs is recommendedd */
 USTRUCT(meta = (DisplayName = "SMB Find Closest Enemy"))
 struct FFindClosestEnemy : public FMassStateTreeTaskBase
 {
@@ -490,8 +524,8 @@ struct FAttackWithSkillInstanceData
 	UPROPERTY(EditAnywhere, Category = Input)
 	FSmbEntityData EntityToAttack;
 
-	/* Specific Location for Attack in World Space (Priority over Entity target) */
-	UPROPERTY(EditAnywhere, Category = Input)
+	/* Specific Location for Attack in World Space (Priority over Entity target if used) */
+	UPROPERTY(EditAnywhere, Category = "Smb")
 	FVector LocationToAttack = FVector::DownVector*9999.f;
 
 	UPROPERTY(EditAnywhere, Category = "Smb")

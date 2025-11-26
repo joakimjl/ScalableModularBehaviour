@@ -516,7 +516,11 @@ UAddDeathFragmentProcessor::UAddDeathFragmentProcessor()
 	:EntityQuery(*this)
 {
 	ObservedType = FAliveTag::StaticStruct();
+#if ENGINE_MAJOR_VERSION==5 && ENGINE_MINOR_VERSION<7 
 	Operation = EMassObservedOperation::Add;
+#else
+	Operation = EMassObservedOperation::AddElement;
+#endif
 	//bAutoRegisterWithProcessingPhases = true;
 	//ExecutionFlags = (int32)(EProcessorExecutionFlags::AllNetModes);
 	//ExecutionOrder.ExecuteInGroup = UE::Mass::ProcessorGroupNames::Movement;
@@ -608,6 +612,7 @@ void UHeightProcessor::Execute(FMassEntityManager& EntityManager, FMassExecution
 				FNavLocation NavLocation;
 				FMassDesiredMovementFragment DesiredMovementFragment = DesiredMovementFragmentView[EntityIt];
 				bool bFoundLocation = NavMeshSubsystem->ProjectPointToNavigation(Transform.GetLocation()+DesiredMovementFragment.DesiredVelocity*HeightFragment.BaseRefreshPeriod,NavLocation, FVector(100.f,100.f,700.f));
+				//UE_LOG(LogTemp, Display, TEXT("Links total: %i "),NavMeshSubsystem->GetNav);
 				if (bFoundLocation)
 				{
 					HeightFragment.TargetHeight = NavLocation.Location.Z;

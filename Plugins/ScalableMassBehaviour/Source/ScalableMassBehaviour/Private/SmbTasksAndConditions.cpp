@@ -20,6 +20,40 @@
 #include "Compression/lz4.h"
 #include "Kismet/GameplayStatics.h"
 
+//Own Location boilerplate
+
+
+FGetOwnLocation::FGetOwnLocation()
+{
+}
+
+bool FGetOwnLocation::Link(FStateTreeLinker& Linker)
+{
+	Linker.LinkExternalData(EntityTransformHandle);
+	return true;
+}
+
+void FGetOwnLocation::GetDependencies(UE::MassBehavior::FStateTreeDependencyBuilder& Builder) const
+{
+	Builder.AddReadOnly<FTransformFragment>();
+}
+
+EStateTreeRunStatus FGetOwnLocation::EnterState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const
+{
+	FInstanceDataType& InstanceData = Context.GetInstanceData(*this);
+	const FTransformFragment& EntityTransform = Context.GetExternalData(EntityTransformHandle);
+	
+	InstanceData.OwnLocation = EntityTransform.GetTransform().GetLocation();
+
+	FMassTargetLocation& OutLocation = InstanceData.TargetLocation;
+	OutLocation.EndOfPathPosition = InstanceData.OwnLocation;
+	OutLocation.EndOfPathIntent = EMassMovementAction::Stand;
+	
+	return EStateTreeRunStatus::Succeeded;
+}
+
+
+
 FGetRandomLocationInRange::FGetRandomLocationInRange()
 {
 	bShouldCallTick = false;
@@ -52,22 +86,27 @@ EStateTreeRunStatus FGetRandomLocationInRange::EnterState(FStateTreeExecutionCon
 	FInstanceDataType& InstanceData = Context.GetInstanceData(*this);
 
 	FVector RandomLocation;
-	if (InstanceData.Radius <= 0.f)
+	if (InstanceData.RandomRadiusRange <= 0.f)
 	{
 		RandomLocation = InstanceData.InLocation;
 	} else {
-		FVector NewLoc = InstanceData.InLocation;
-		NewLoc.X += FMath::FRandRange(-InstanceData.Radius, InstanceData.Radius);
-		NewLoc.Y += FMath::FRandRange(-InstanceData.Radius, InstanceData.Radius);
-		RandomLocation = NewLoc;
+		FVector RandomOffset = InstanceData.InLocation;
+		RandomOffset.X += FMath::FRandRange(-InstanceData.RandomRadiusRange, InstanceData.RandomRadiusRange);
+		RandomOffset.Y += FMath::FRandRange(-InstanceData.RandomRadiusRange, InstanceData.RandomRadiusRange);
+		RandomLocation = RandomOffset;
 	}
 	FTransformFragment& TransformFragment = Context.GetExternalData(TransformFragmentHandle);
 	FVector Location = TransformFragment.GetTransform().GetLocation();
 	FLocationDataFragment LocationDataFragment = Context.GetExternalData(LocationDataFragmentHandle);
+
 	
-	if (LocationDataFragment.WalkToLocation != FVector::DownVector)
+	if (LocationDataFragment.WalkToLocation != FVector::DownVector && !InstanceData.bNewLocation)
 	{
-		RandomLocation = LocationDataFragment.WalkToLocation;
+		FVector RandomOffset = FVector::ZeroVector;
+		RandomOffset.X += FMath::FRandRange(-InstanceData.RandomRadiusRange, InstanceData.RandomRadiusRange);
+		RandomOffset.Y += FMath::FRandRange(-InstanceData.RandomRadiusRange, InstanceData.RandomRadiusRange);
+		RandomLocation = LocationDataFragment.WalkToLocation + RandomOffset;
+		
 		if ((Location-RandomLocation).Size() <= InstanceData.AcceptableWalkRadius)
 		{
 			FAnimationFragment& AnimFrag = Context.GetExternalData(AnimationFragmentHandle);
@@ -421,133 +460,6 @@ EStateTreeRunStatus FFindClosestEnemy::Tick(FStateTreeExecutionContext& Context,
 	return EStateTreeRunStatus::Running;
 }
 
-
-/*
-FProcessAttack::FProcessAttack()
-{
-	bShouldCallTick = true;
-}
-
-bool FProcessAttack::Link(FStateTreeLinker& Linker)
-{
-	Linker.LinkExternalData(EntityTransformHandle);
-	Linker.LinkExternalData(SmbSubsystemHandle);
-	Linker.LinkExternalData(AnimationFragmentHandle);
-	Linker.LinkExternalData(AttackFragmentHandle);
-	Linker.LinkExternalData(DesiredMovementHandle);
-	Linker.LinkExternalData(MovementParamHandle);
-	Linker.LinkExternalData(MoveTargetHandle);
-	Linker.LinkExternalData(MassSignalSubsystemHandle);
-	return true;
-}
-
-void FProcessAttack::GetDependencies(UE::MassBehavior::FStateTreeDependencyBuilder& Builder) const
-{
-	Builder.AddReadWrite(EntityTransformHandle);
-	Builder.AddReadWrite(SmbSubsystemHandle);
-	Builder.AddReadWrite(AnimationFragmentHandle);
-	Builder.AddReadWrite(AttackFragmentHandle);
-	Builder.AddReadWrite(DesiredMovementHandle);
-	Builder.AddReadWrite(MovementParamHandle);
-	Builder.AddReadWrite(MoveTargetHandle);
-	Builder.AddReadWrite(MassSignalSubsystemHandle);
-}
-
-EStateTreeRunStatus FProcessAttack::EnterState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const
-{
-	return EStateTreeRunStatus::Running;
-}
-
-EStateTreeRunStatus FProcessAttack::Tick(FStateTreeExecutionContext& Context, const float DeltaTime) const
-{
-	const FMassStateTreeExecutionContext& MassStateTreeContext = static_cast<FMassStateTreeExecutionContext&>(Context);
-	FInstanceDataType& InstanceData = Context.GetInstanceData(*this);
-	FTransformFragment& TransformFrag = Context.GetExternalData(EntityTransformHandle);
-	USmbSubsystem& SmbSubsystem = Context.GetExternalData(SmbSubsystemHandle);
-	FAttackFragment& AttackFragment = Context.GetExternalData(AttackFragmentHandle);
-	FAnimationFragment& AnimationFragment = Context.GetExternalData(AnimationFragmentHandle);
-	FMassMovementParameters& MovementParameters = Context.GetExternalData(MovementParamHandle);
-	FMassMoveTargetFragment& MoveTargetFragmentFragment = Context.GetExternalData(MoveTargetHandle);
-	FMassDesiredMovementFragment& DesiredMovementFragment = Context.GetExternalData(DesiredMovementHandle);
-
-	UMassSignalSubsystem& MassSignalSubsystem = Context.GetExternalData(MassSignalSubsystemHandle);
-
-	AttackFragment.TimeLeftToAttack -= DeltaTime+0.001f;
-	
-	if (InstanceData.EntityTarget.Index == -1 && InstanceData.EntityTarget.SerialNumber == -1) return EStateTreeRunStatus::Failed;
-	FVector TargetLocation = SmbSubsystem.GetEntityDataLocation(InstanceData.EntityTarget);
-	FVector SelfLocation = TransformFrag.GetTransform().GetLocation();
-	FVector ForwardDir = (TargetLocation-SelfLocation).GetSafeNormal();
-	MoveTargetFragmentFragment.Forward = ForwardDir;
-	MoveTargetFragmentFragment.Forward.Z = 0.f;
-	float DistanceAway = ((TargetLocation-SelfLocation).Size()-AttackFragment.AttackRange*0.95);
-	MoveTargetFragmentFragment.Center = ForwardDir*((TargetLocation-SelfLocation).Size()-DistanceAway);
-	MoveTargetFragmentFragment.Center.Z = 0.f;
-	DesiredMovementFragment.DesiredVelocity = MoveTargetFragmentFragment.Center.GetSafeNormal()*(FMath::Clamp(DistanceAway*MovementParameters.MaxSpeed-10.f,0,MovementParameters.MaxSpeed));
-	DesiredMovementFragment.DesiredFacing = (TargetLocation-SelfLocation).ToOrientationQuat();
-
-	//Not within range exit
-	if ((TargetLocation - SelfLocation).Size() >= AttackFragment.AttackRange)
-	{
-		AnimationFragment.CurrentState = EAnimationState::Running;
-		MassSignalSubsystem.DelaySignalEntityDeferred(MassStateTreeContext.GetMassEntityExecutionContext(),
-		UE::Mass::Signals::StandTaskFinished, MassStateTreeContext.GetEntity(), 0.1f);
-		return EStateTreeRunStatus::Running;
-	}
-
-	//Too long time left exit
-	if (AttackFragment.TimeLeftToAttack > 0.f)
-	{
-		MassSignalSubsystem.DelaySignalEntityDeferred(MassStateTreeContext.GetMassEntityExecutionContext(),
-		UE::Mass::Signals::StandTaskFinished, MassStateTreeContext.GetEntity(), AttackFragment.TimeLeftToAttack+0.01f);
-		AnimationFragment.CurrentState = EAnimationState::Idle;
-		return EStateTreeRunStatus::Running;
-	}
-
-	//Attack didn't start exit
-	if (AttackFragment.TimeLeftToAttack <= 0.f && AnimationFragment.CurrentState != EAnimationState::Attacking)
-	{
-		MassSignalSubsystem.DelaySignalEntityDeferred(MassStateTreeContext.GetMassEntityExecutionContext(),
-		UE::Mass::Signals::StandTaskFinished, MassStateTreeContext.GetEntity(), AttackFragment.AnimationDelayUntilDamage);
-		AnimationFragment.CurrentState = EAnimationState::Attacking;
-		AttackFragment.CurrentTimeIntoTheAttack = 0.f;
-		return EStateTreeRunStatus::Running;
-	}
-
-	//Not ready to deal damage exit
-	if (AttackFragment.CurrentTimeIntoTheAttack < AttackFragment.AnimationDelayUntilDamage)
-	{
-		AttackFragment.CurrentTimeIntoTheAttack += DeltaTime;
-		MassSignalSubsystem.DelaySignalEntityDeferred(MassStateTreeContext.GetMassEntityExecutionContext(),
-		UE::Mass::Signals::StandTaskFinished, MassStateTreeContext.GetEntity(), AttackFragment.AnimationDelayUntilDamage-AttackFragment.CurrentTimeIntoTheAttack);
-		return EStateTreeRunStatus::Running;
-	}
-
-	//Deal one damage instance of damage
-	if (AttackFragment.DamageInstances > AttackFragment.CurDamageInstance)
-	{
-		SmbSubsystem.DealDamageToEnemy(InstanceData.EntityTarget, AttackFragment.AttackDamage, AttackFragment.DamageType);
-		AttackFragment.CurDamageInstance += 1;
-	}
-
-	//Not fully recovered exit (animation should continue)
-	if (AttackFragment.CurrentTimeIntoTheAttack < AttackFragment.AnimationDelayUntilDamage+AttackFragment.AttackRecoveryTime)
-	{
-		AttackFragment.CurrentTimeIntoTheAttack += DeltaTime;
-		MassSignalSubsystem.DelaySignalEntityDeferred(MassStateTreeContext.GetMassEntityExecutionContext(),
-		UE::Mass::Signals::StandTaskFinished, MassStateTreeContext.GetEntity(), AttackFragment.AttackRecoveryTime);
-		return EStateTreeRunStatus::Running;
-	}
-
-	//Reset and go to idle, finished
-	AttackFragment.TimeLeftToAttack = AttackFragment.AttackRate;
-	AttackFragment.CurDamageInstance = 0;
-	
-	AnimationFragment.CurrentState = EAnimationState::Idle;
-
-	
-	return EStateTreeRunStatus::Succeeded;
-} */
 
 
 FWalkToEntityLocation::FWalkToEntityLocation()

@@ -80,8 +80,7 @@ UMaterialInstanceConstant* USmbBlueprintLibrary::CreateMaterialInstance(FString 
 	return nullptr;
 }
 
-bool USmbBlueprintLibrary::SetAnimationsInConfig(UMassEntityConfigAsset* MassEntityConfigAsset, TMap<EAnimationState,
-	UAnimSequence*> AnimationMap, UStaticMesh* StaticMesh)
+bool USmbBlueprintLibrary::SetAnimationsInConfig(UMassEntityConfigAsset* MassEntityConfigAsset, TMap<EAnimationState, UAnimSequence*> AnimationMap, UStaticMesh* StaticMesh)
 {
 	FMassEntityConfig& Config = MassEntityConfigAsset->GetMutableConfig();
 	TConstArrayView<UMassEntityTraitBase*> Traits = Config.GetTraits();
@@ -148,6 +147,7 @@ bool USmbBlueprintLibrary::SetTeamAtSpawn(ASmbSpawner* SmbSpawner, int32 NewTeam
 	if (Handles.Num() <= 0) return false;
 	for (FMassEntityHandle Handle : Handles)
 	{
+		if (!EntityManager->IsEntityBuilt(Handle)) continue;
 		if (!EntityManager->IsEntityValid(Handle)) continue;
 		FTeamFragment* TeamFragment = EntityManager->GetFragmentDataPtr<FTeamFragment>(Handle);
 		if (!TeamFragment) continue;

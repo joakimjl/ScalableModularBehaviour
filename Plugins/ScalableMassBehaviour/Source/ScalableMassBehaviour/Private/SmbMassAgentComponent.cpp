@@ -39,7 +39,9 @@ void USmbMassAgentComponent::TickComponent(float DeltaTime, ELevelTick TickType,
 
 float USmbMassAgentComponent::GetHealth() const
 {
-	if (!EntityManager) return -2.f;
+	if (!EntityManager) return -1.f;
+	if (!EntityManager->IsEntityValid(AgentHandle)) return -1.f;
+	if (!EntityManager->IsEntityBuilt(AgentHandle)) return -1.f;
 	if (FDefenceFragment* DefenceFrag = EntityManager->GetFragmentDataPtr<FDefenceFragment>(AgentHandle))
 	{
 		return DefenceFrag->HP;
@@ -47,12 +49,15 @@ float USmbMassAgentComponent::GetHealth() const
 	return -1.f;
 }
 
-void USmbMassAgentComponent::SetTeam(int32 NewTeam)
+bool USmbMassAgentComponent::SetTeam(int32 NewTeam)
 {
-	if (!EntityManager) return;
+	if (!EntityManager) return false;
+	if (!EntityManager->IsEntityBuilt(AgentHandle)) return false;
+	if (!EntityManager->IsEntityValid(AgentHandle)) return false;
 	FTeamFragment* TeamFragment = EntityManager->GetFragmentDataPtr<FTeamFragment>(AgentHandle);
-	if (!TeamFragment) return;
+	if (!TeamFragment) return false;
 	TeamFragment->TeamID = NewTeam;
+	return true;
 }
 
 

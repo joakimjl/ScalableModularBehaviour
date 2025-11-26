@@ -10,6 +10,9 @@
 #include "Animation/AnimationAsset.h"
 #include "Engine/StaticMesh.h"
 #include "Components/InstancedStaticMeshComponent.h"
+#if ENGINE_MAJOR_VERSION==5 && ENGINE_MINOR_VERSION>=7 
+#include "MassEntityTypes.h"
+#endif
 
 #include "SmbFragments.generated.h"
 
@@ -247,6 +250,8 @@ enum class EDamageType : uint8
 	Blunt
 };
 
+
+/* Note this is a legacy fragment and not used in tasks anymore */
 USTRUCT()
 struct FAttackFragment : public FMassFragment
 {
@@ -548,7 +553,7 @@ struct FDeathPhysicsSharedFragment : public FMassSharedFragment
 
 #if ENGINE_MAJOR_VERSION==5 && ENGINE_MINOR_VERSION>=7 
 template<>
-struct TMassFragmentTraits<FDeathPhysicsFragment>
+struct TMassFragmentTraits<FDeathPhysicsSharedFragment>
 {
 	enum { AuthorAcceptsItsNotTriviallyCopyable = true };
 };
