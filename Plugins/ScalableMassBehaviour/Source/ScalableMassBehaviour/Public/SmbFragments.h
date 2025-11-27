@@ -10,9 +10,9 @@
 #include "Animation/AnimSequence.h"
 #include "Animation/AnimationAsset.h"
 #include "Engine/StaticMesh.h"
-#if ENGINE_MAJOR_VERSION==5 && ENGINE_MINOR_VERSION>=7 
+
+// Needed for templates
 #include "MassEntityTypes.h"
-#endif
 #include "Components/InstancedStaticMeshComponent.h"
 
 #include "SmbFragments.generated.h"

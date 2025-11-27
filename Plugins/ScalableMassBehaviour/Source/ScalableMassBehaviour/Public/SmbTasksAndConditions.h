@@ -319,8 +319,8 @@ struct FEnemyDistanceConditionInstanceData
 {
 	GENERATED_BODY()
 
-	UPROPERTY(EditAnywhere, Category = Input)
-	FSmbEntityData InEnemy = FSmbEntityData();
+	//UPROPERTY(EditAnywhere, Category = "Smb")
+	//FSmbEntityData InEnemy = FSmbEntityData();
 
 	UPROPERTY(EditAnywhere, Category = "Smb")
 	float AcceptableDistance = 50.f;
@@ -390,7 +390,6 @@ struct FFindClosestEnemy : public FMassStateTreeTaskBase
 	float TickDelay = 1.f;
 	
 	TStateTreeExternalDataHandle<FTransformFragment> EntityTransformHandle;
-	TStateTreeExternalDataHandle<FAttackFragment> AttackFragmentHandle;
 	TStateTreeExternalDataHandle<FTeamFragment> TeamFragmentHandle;
 	TStateTreeExternalDataHandle<USmbSubsystem> SmbSubsystemHandle;
 	TStateTreeExternalDataHandle<UMassSignalSubsystem> MassSignalSubsystemHandle;

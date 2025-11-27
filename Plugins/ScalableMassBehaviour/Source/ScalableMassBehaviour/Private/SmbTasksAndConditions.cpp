@@ -252,8 +252,20 @@ bool FEnemyDistanceCondition::TestCondition(FStateTreeExecutionContext& Context)
 	
 	FMassEntityHandle ClosestHandle(NearEnemiesFragment.ClosestEnemies[0].Index, NearEnemiesFragment.ClosestEnemies[0].SerialNumber);
 	if (!MassStateTreeContext.GetEntityManager().IsEntityValid(ClosestHandle)) return false;
-	FTransformFragment* ClosestTransform = MassStateTreeContext.GetEntityManager().GetFragmentDataPtr<FTransformFragment>(ClosestHandle);
-	float Distance = (EntityLocation - ClosestTransform->GetTransform().GetLocation()).Size();
+	
+	USmbSubsystem* SmbSubsystem = MassStateTreeContext.GetWorld()->GetSubsystem<USmbSubsystem>();
+	if (!SmbSubsystem) return false;
+	FMassEntityManager& EntityManager = MassStateTreeContext.GetEntityManager();
+
+	FAgentRadiusFragment* AgentRadiusFragment = EntityManager.GetFragmentDataPtr<FAgentRadiusFragment>(ClosestHandle);
+	if (!AgentRadiusFragment) return false;
+	FTransformFragment* OtherTransformFrag = EntityManager.GetFragmentDataPtr<FTransformFragment>(ClosestHandle);
+	if (!OtherTransformFrag) return false;
+	FVector OtherLocation = OtherTransformFrag->GetTransform().GetLocation();
+	FVector OwnLocation = TransformFragment.GetTransform().GetLocation();
+	FVector TargetLocation = OtherLocation+(OwnLocation-OtherLocation).GetSafeNormal()*(AgentRadiusFragment->Radius*0.85f);
+	
+	float Distance = (EntityLocation - TargetLocation).Size();
 	bool bIsCloseEnough = Distance < InstanceData.AcceptableDistance;
 	InstanceData.bConditionResult = bIsCloseEnough;
 	return bIsCloseEnough;
@@ -389,7 +401,6 @@ bool FFindClosestEnemy::Link(FStateTreeLinker& Linker)
 {
 	Linker.LinkExternalData(EntityTransformHandle);
 	Linker.LinkExternalData(SmbSubsystemHandle);
-	Linker.LinkExternalData(AttackFragmentHandle);
 	Linker.LinkExternalData(TeamFragmentHandle);
 	Linker.LinkExternalData(MassSignalSubsystemHandle);
 	return true;
@@ -399,7 +410,6 @@ void FFindClosestEnemy::GetDependencies(UE::MassBehavior::FStateTreeDependencyBu
 {
 	Builder.AddReadWrite(EntityTransformHandle);
 	Builder.AddReadWrite(SmbSubsystemHandle);
-	Builder.AddReadWrite(AttackFragmentHandle);
 	Builder.AddReadWrite(TeamFragmentHandle);
 	Builder.AddReadWrite(MassSignalSubsystemHandle);
 }
@@ -409,7 +419,6 @@ EStateTreeRunStatus FFindClosestEnemy::EnterState(FStateTreeExecutionContext& Co
 	const FMassStateTreeExecutionContext& MassStateTreeContext = static_cast<FMassStateTreeExecutionContext&>(Context);
 	FInstanceDataType& InstanceData = Context.GetInstanceData(*this);
 	USmbSubsystem& SmbSubsystem = Context.GetExternalData(SmbSubsystemHandle);
-	FAttackFragment& AttackFragment = Context.GetExternalData(AttackFragmentHandle);
 	FTransformFragment& TransformFragment = Context.GetExternalData(EntityTransformHandle);
 	FTeamFragment& TeamFragment = Context.GetExternalData(TeamFragmentHandle);
 
@@ -440,7 +449,6 @@ EStateTreeRunStatus FFindClosestEnemy::Tick(FStateTreeExecutionContext& Context,
 	const FMassStateTreeExecutionContext& MassStateTreeContext = static_cast<FMassStateTreeExecutionContext&>(Context);
 	FInstanceDataType& InstanceData = Context.GetInstanceData(*this);
 	USmbSubsystem& SmbSubsystem = Context.GetExternalData(SmbSubsystemHandle);
-	FAttackFragment& AttackFragment = Context.GetExternalData(AttackFragmentHandle);
 	FTransformFragment& TransformFragment = Context.GetExternalData(EntityTransformHandle);
 	FTeamFragment& TeamFragment = Context.GetExternalData(TeamFragmentHandle);
 
@@ -671,6 +679,7 @@ EStateTreeRunStatus FAttackWithSkill::EnterState(FStateTreeExecutionContext& Con
 	{
 		return EStateTreeRunStatus::Failed;
 	}
+	if (AbilityDataFragment.IsAttacking) return EStateTreeRunStatus::Running;
 	AbilityDataFragment.CurrentAbility = InstanceData.SkillData.Get();
 	AbilityDataFragment.IsAttacking = true;
 	AbilityDataFragment.TimeInAttack = 0.f;
@@ -681,41 +690,6 @@ EStateTreeRunStatus FAttackWithSkill::EnterState(FStateTreeExecutionContext& Con
 	AnimationFragment.CurrentState = InstanceData.SkillData->AnimationState;
 
 	return EStateTreeRunStatus::Running;
-	/*
-	const FMassStateTreeExecutionContext& MassStateTreeContext = static_cast<FMassStateTreeExecutionContext&>(Context);
-	UMassSignalSubsystem& SignalSubsystem = Context.GetExternalData(MassSignalSubsystemHandle);
-	
-	FTransform Transform = Context.GetExternalData(EntityTransformHandle).GetTransform();
-	//FAnimationFragment& AnimationFragment = Context.GetExternalData(AnimationFragmentHandle);
-	USmbSubsystem& SmbSubsystem = Context.GetExternalData(SmbSubsystemHandle);
-	FNearEnemiesFragment& EnemiesNear = Context.GetExternalData(NearEnemiesFragHandle);
-	
-	FVector Location = InstanceData.LocationToAttack;
-	FMassEntityHandle EnemyHandle(InstanceData.EntityToAttack.Index, InstanceData.EntityToAttack.SerialNumber);
-	if (SmbSubsystem.IsEntityValidManager(EnemyHandle))
-	{
-		Location = SmbSubsystem.GetEntityLocation(EnemyHandle);
-	} else
-	{
-		if (EnemiesNear.ClosestEnemies.Num() <= 0) return EStateTreeRunStatus::Failed;
-		InstanceData.EntityToAttack = EnemiesNear.ClosestEnemies[0];
-		if (SmbSubsystem.IsEntityValidManager(EnemiesNear.ClosestEnemies[0]))
-		{
-			Location = SmbSubsystem.GetEntityLocation(EnemiesNear.ClosestEnemies[0]);
-		} else
-		{
-			return EStateTreeRunStatus::Failed; 
-		}
-	}
-
-	//Too far away fail.
-	if ( (Location-Transform.GetLocation()).Size() >= InstanceData.SkillData->Range) return EStateTreeRunStatus::Failed; 
-	
-	AnimationFragment.CurrentState = InstanceData.SkillData->AnimationState;
-	
-	SignalSubsystem.DelaySignalEntityDeferred(MassStateTreeContext.GetMassEntityExecutionContext(),
-		Smb::Signals::AttackFinished, MassStateTreeContext.GetEntity(), InstanceData.SkillData->TimeUntilHit);
-	return EStateTreeRunStatus::Running; */
 }
 
 EStateTreeRunStatus FAttackWithSkill::Tick(FStateTreeExecutionContext& Context, const float DeltaTime) const
@@ -727,139 +701,16 @@ EStateTreeRunStatus FAttackWithSkill::Tick(FStateTreeExecutionContext& Context, 
 	{
 		return EStateTreeRunStatus::Running;
 	}
+	AbilityDataFragment.TimeInAttack = 0.f;
+	AbilityDataFragment.IsAttacking = false;
+	USmbAbilityData* Ability = AbilityDataFragment.CurrentAbility;
+	if (AbilityDataFragment.TimeInAttack >= Ability->TimeUntilHit+Ability->RecoveryTime)
+	{
+		AbilityDataFragment.IsAttacking = false;
+		AbilityDataFragment.TimeInAttack = 0.f;
+		AbilityDataFragment.TimesHit = 0;
+	}
 	return EStateTreeRunStatus::Succeeded;
-
-	/*
-	const FMassStateTreeExecutionContext& MassStateTreeContext = static_cast<FMassStateTreeExecutionContext&>(Context);
-	UMassSignalSubsystem& SignalSubsystem = Context.GetExternalData(MassSignalSubsystemHandle);
-	FAnimationFragment& AnimationFragment = Context.GetExternalData(AnimationFragmentHandle);
-	//FInstanceDataType& InstanceData = Context.GetInstanceData(*this);
-	USmbSubsystem& SmbSubsystem = Context.GetExternalData(SmbSubsystemHandle);
-	FTransform Transform = Context.GetExternalData(EntityTransformHandle).GetTransform();
-	FTeamFragment TeamFragment = Context.GetExternalData(TeamFragmentHandle);
-
-	InstanceData.TimeInAttack += DeltaTime;
-
-	TObjectPtr<USmbAbilityData> SkillData = InstanceData.SkillData;
-
-	if (InstanceData.TimeInAttack <= InstanceData.SkillData->TimeUntilHit)
-	{
-		SignalSubsystem.DelaySignalEntityDeferred(MassStateTreeContext.GetMassEntityExecutionContext(),
-		Smb::Signals::AttackFinished, MassStateTreeContext.GetEntity(),
-		InstanceData.SkillData->TimeUntilHit-InstanceData.TimeInAttack);
-		return EStateTreeRunStatus::Running;
-	}
-
-	if (InstanceData.TimeSpawned < 1)
-	{
-		InstanceData.TimeSpawned += 1;
-		
-		FVector EnemyLocation = InstanceData.LocationToAttack;
-		FMassEntityHandle EnemyHandle(InstanceData.EntityToAttack.Index, InstanceData.EntityToAttack.SerialNumber);
-		if (SmbSubsystem.IsEntityValidManager(EnemyHandle))
-		{
-			EnemyLocation = SmbSubsystem.GetEntityLocation(EnemyHandle);
-		} else
-		{
-			EnemyLocation = Transform.GetLocation();
-		}
-		
-		if (InstanceData.TimeInAttack >= InstanceData.SkillData->TimeUntilHit+InstanceData.SkillData->RecoveryTime)
-		{
-			AnimationFragment.CurrentState = EAnimationState::Idle;
-			return EStateTreeRunStatus::Succeeded;
-		}
-
-		FGameplayTagContainer AbilityContainer = FGameplayTagContainer(
-			FGameplayTag::RequestGameplayTag(FName("Skill.Type")));
-		//Find skill type
-		AbilityContainer = SkillData->AbilityTagContainer.Filter(AbilityContainer);
-		if (AbilityContainer.Num() == 0)
-		{
-			UE_LOG(LogTemp, Warning, TEXT("No skill found"));
-			return EStateTreeRunStatus::Failed;
-		}
-		FGameplayTagContainer AllAbilityContainer = FGameplayTagContainer(
-			FGameplayTag::RequestGameplayTag(FName("Skill")));
-		AllAbilityContainer = SkillData->AbilityTagContainer.Filter(AllAbilityContainer);
-		
-		//Switch on skill type
-		//If melee skill
-		
-		if (AllAbilityContainer.HasAny(FGameplayTagContainer(FGameplayTag::RequestGameplayTag(FName("Skill.Type.Melee")))))
-		{
-			int32 Killed = 0;
-			if (AllAbilityContainer.HasAny(FGameplayTagContainer(FGameplayTag::RequestGameplayTag(FName("Skill.Modifier.Area")))))
-			{
-				SmbSubsystem.DealDamageAoe(EnemyLocation,
-				InstanceData.SkillData->AreaOfEffect,
-				InstanceData.SkillData->Damage,
-				EDamageType::Normal,
-				TeamFragment.TeamID,
-				Killed);
-			} else
-			{
-				SmbSubsystem.DealDamageToEnemy(
-					InstanceData.EntityToAttack,
-					InstanceData.SkillData->Damage,
-					EDamageType::Normal);
-			}
-		}
-		else if (AbilityContainer.HasAny(FGameplayTagContainer(FGameplayTag::RequestGameplayTag(FName("Skill.Type.Ranged")))))
-		{
-			SmbSubsystem.AddProjectile(Transform.GetLocation()+FVector::UpVector*180.f,
-				EnemyLocation,
-				InstanceData.SkillData,
-				TeamFragment.TeamID);
-		}
-		else if (AbilityContainer.HasAny(FGameplayTagContainer(FGameplayTag::RequestGameplayTag(FName("Skill.Type.Cast")))))
-		{
-			//TODO fire cast projectile and remove mana
-			UE_LOG(LogTemp, Warning, TEXT("Cast not implemented"));
-		}
-		else if (AbilityContainer.HasAny(FGameplayTagContainer(FGameplayTag::RequestGameplayTag(FName("Skill.Type.Gather")))))
-		{
-			//TODO gather nearby
-			UE_LOG(LogTemp, Warning, TEXT("Gather not implemented"));
-		}
-		else
-		{
-			UE_LOG(LogTemp, Warning, TEXT("No skill found"));
-			return EStateTreeRunStatus::Failed;
-		}
-		
-		//Spawn VFX if should hit
-		TSoftObjectPtr<USoundBase> Sound = InstanceData.SkillData->AbilitySound;
-		if (Sound.IsValid())
-		{
-			UGameplayStatics::SpawnSoundAtLocation(Context.GetWorld(),Sound.Get(),Transform.GetLocation());
-		}
-		TSoftObjectPtr<UNiagaraSystem> NiagaraSystem = InstanceData.SkillData->AbilityVfx;
-		if (NiagaraSystem.IsValid())
-		{
-			ASmbNiagaraContainer* NiagaraContainer = Context.GetWorld()->SpawnActor<ASmbNiagaraContainer>();
-			NiagaraContainer->NiagaraComponent.Get()->SetAsset(NiagaraSystem.Get());
-			NiagaraContainer->NiagaraComponent->SetWorldLocation(Transform.GetLocation());
-		}
-	} 
-	
-	float TimeRemaining = InstanceData.SkillData->TimeUntilHit+InstanceData.SkillData->RecoveryTime-InstanceData.TimeInAttack;
-	if (TimeRemaining <= 0.f)
-	{
-		InstanceData.TimeSpawned = 0.f;
-		InstanceData.TimeInAttack = 0.f;
-		AnimationFragment.CurrentState = EAnimationState::Idle;
-		//FLocationDataFragment& LocationDataFragment = Context.GetExternalData(LocationDataHandle);
-		//if (LocationDataFragment.PrevWalkToLocationBeforeAttack != FVector::ZeroVector)
-		//{
-		//	LocationDataFragment.WalkToLocation = LocationDataFragment.PrevWalkToLocationBeforeAttack;
-		//}
-		return EStateTreeRunStatus::Succeeded;
-	}
-	SignalSubsystem.DelaySignalEntityDeferred(MassStateTreeContext.GetMassEntityExecutionContext(),
-		Smb::Signals::AttackFinished, MassStateTreeContext.GetEntity(),
-		InstanceData.SkillData->TimeUntilHit+InstanceData.SkillData->RecoveryTime-InstanceData.TimeInAttack);
-	return EStateTreeRunStatus::Running; */
 }
 
 

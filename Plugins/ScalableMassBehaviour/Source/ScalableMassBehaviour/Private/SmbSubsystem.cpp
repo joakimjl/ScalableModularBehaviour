@@ -483,7 +483,9 @@ bool USmbSubsystem::DealDamageAoe(FVector InLocation, float Radius, float Damage
 		FTransformFragment* TransformFragment = EntityManagerPtr->GetFragmentDataPtr<FTransformFragment>(EnemyHandle);
 		if (!TransformFragment) continue;
 		FVector EnemyLocation = TransformFragment->GetMutableTransform().GetLocation();
-		if ((EnemyLocation-InLocation).Size()>Radius) continue;
+		FAgentRadiusFragment* AgentRadiusFrag = EntityManagerPtr->GetFragmentDataPtr<FAgentRadiusFragment>(EnemyHandle);
+		if (!AgentRadiusFrag) continue;
+		if ((EnemyLocation-InLocation).Size()>Radius+AgentRadiusFrag->Radius) continue;
 		FDefenceFragment* DefenceFragment = EntityManagerPtr->GetFragmentDataPtr<FDefenceFragment>(EnemyHandle);
 		if (!DefenceFragment) continue;
 		if (DefenceFragment->HP <= 0) continue;

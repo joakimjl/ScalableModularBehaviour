@@ -63,7 +63,7 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Smb")
 	TSoftObjectPtr<USoundBase> AbilitySound = TSoftObjectPtr<USoundBase>();
 
-	/* Attack is a projectile */
+	/* Attack is a projectile (Note Ranged not fully finished) */
 	UPROPERTY(EditAnywhere, Category = "Smb")
 	bool bIsProjectile = false;
 
@@ -71,9 +71,9 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Smb", meta=(EditCondition = "bIsProjectile"))
 	float Speed = 0.f;
 	
-	/* Projectile Mesh */
+	/* Projectile Mesh (not used yet) */
 	UPROPERTY(EditAnywhere, Category = "Smb", meta=(EditCondition = "bIsProjectile"))
-	TSoftObjectPtr<UStaticMesh> ProjectileMesh = TSoftObjectPtr<UStaticMesh>();
+	TObjectPtr<class UStaticMesh> ProjectileMesh;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Smb")
 	FGameplayTagContainer AbilityTagContainer;
