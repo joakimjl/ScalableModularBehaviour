@@ -519,7 +519,7 @@ UAddDeathFragmentProcessor::UAddDeathFragmentProcessor()
 #if ENGINE_MAJOR_VERSION==5 && ENGINE_MINOR_VERSION<7 
 	Operation = EMassObservedOperation::Add;
 #else
-	Operation = EMassObservedOperation::AddElement;
+	ObservedOperations = EMassObservedOperationFlags::Add;
 #endif
 	//bAutoRegisterWithProcessingPhases = true;
 	//ExecutionFlags = (int32)(EProcessorExecutionFlags::AllNetModes);
