@@ -169,6 +169,30 @@ struct TMassExternalSubsystemTraits<USmbSubsystem>
 	static constexpr bool ThreadSafeWrite = false;
 };
 
+USTRUCT()
+struct FAbilitySpawningData
+{
+	GENERATED_BODY()
+
+	FAbilitySpawningData() = default;
+	
+	FAbilitySpawningData(USmbAbilityData* InAbilityData, const FTransform& InTransform , float InDelay = 0.f)
+	{
+		AbilityData = InAbilityData;
+		Transform = InTransform;
+		Delay = InDelay;
+	}
+
+	UPROPERTY()
+	USmbAbilityData* AbilityData = nullptr;
+
+	UPROPERTY()
+	FTransform Transform = FTransform::Identity;
+
+	UPROPERTY()
+	float Delay = 0.f;
+};
+
 /**
  * 
  */
@@ -218,6 +242,11 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Smb")
 	TArray<FSmbEntityData> SelectEntitiesInside(FVector TopLeftLocation, FVector BottomRightLocation, int32 Team = -1, float YawRotation = 0.f);
 
+	UPROPERTY()
+	TArray<FAbilitySpawningData> AbilitySpawningDataArray;
+	UFUNCTION()
+	void SpawnAbilityDataDeferred(USmbAbilityData* AbilityData, const FTransform& Transform, float Delay = 0.f);
+	
 	/* Sets walk target vector for given entities */ 
 	UFUNCTION(BlueprintCallable, Category = "Smb")
 	bool MoveEntities(TArray<FSmbEntityData> Units, FVector NewLocation, int32 Team = -1);

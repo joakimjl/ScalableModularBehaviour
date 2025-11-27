@@ -644,6 +644,7 @@ bool FAttackWithSkill::Link(FStateTreeLinker& Linker)
 	Linker.LinkExternalData(NearEnemiesFragHandle);;
 	Linker.LinkExternalData(MassRepFragmentHandle);
 	Linker.LinkExternalData(LocationDataHandle);
+	Linker.LinkExternalData(AbilityDataHandle);
 	return true;
 }
 
@@ -658,15 +659,34 @@ void FAttackWithSkill::GetDependencies(UE::MassBehavior::FStateTreeDependencyBui
 	Builder.AddReadWrite(NearEnemiesFragHandle);
 	Builder.AddReadWrite(MassSignalSubsystemHandle);
 	Builder.AddReadWrite(LocationDataHandle);
+	Builder.AddReadWrite(AbilityDataHandle);
 }
 
 EStateTreeRunStatus FAttackWithSkill::EnterState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const
 {
+	FInstanceDataType& InstanceData = Context.GetInstanceData(*this);
+
+	FAbilityDataFragment& AbilityDataFragment = Context.GetExternalData(AbilityDataHandle);
+	if (!IsValid(InstanceData.SkillData))
+	{
+		return EStateTreeRunStatus::Failed;
+	}
+	AbilityDataFragment.CurrentAbility = InstanceData.SkillData.Get();
+	AbilityDataFragment.IsAttacking = true;
+	AbilityDataFragment.TimeInAttack = 0.f;
+	AbilityDataFragment.CurrentCooldown = 0.f;
+	AbilityDataFragment.TimesHit = 0;
+
+	FAnimationFragment& AnimationFragment = Context.GetExternalData(AnimationFragmentHandle);
+	AnimationFragment.CurrentState = InstanceData.SkillData->AnimationState;
+
+	return EStateTreeRunStatus::Running;
+	/*
 	const FMassStateTreeExecutionContext& MassStateTreeContext = static_cast<FMassStateTreeExecutionContext&>(Context);
 	UMassSignalSubsystem& SignalSubsystem = Context.GetExternalData(MassSignalSubsystemHandle);
-	FInstanceDataType& InstanceData = Context.GetInstanceData(*this);
+	
 	FTransform Transform = Context.GetExternalData(EntityTransformHandle).GetTransform();
-	FAnimationFragment& AnimationFragment = Context.GetExternalData(AnimationFragmentHandle);
+	//FAnimationFragment& AnimationFragment = Context.GetExternalData(AnimationFragmentHandle);
 	USmbSubsystem& SmbSubsystem = Context.GetExternalData(SmbSubsystemHandle);
 	FNearEnemiesFragment& EnemiesNear = Context.GetExternalData(NearEnemiesFragHandle);
 	
@@ -695,15 +715,25 @@ EStateTreeRunStatus FAttackWithSkill::EnterState(FStateTreeExecutionContext& Con
 	
 	SignalSubsystem.DelaySignalEntityDeferred(MassStateTreeContext.GetMassEntityExecutionContext(),
 		Smb::Signals::AttackFinished, MassStateTreeContext.GetEntity(), InstanceData.SkillData->TimeUntilHit);
-	return EStateTreeRunStatus::Running;
+	return EStateTreeRunStatus::Running; */
 }
 
 EStateTreeRunStatus FAttackWithSkill::Tick(FStateTreeExecutionContext& Context, const float DeltaTime) const
 {
+	FInstanceDataType& InstanceData = Context.GetInstanceData(*this);
+
+	FAbilityDataFragment& AbilityDataFragment = Context.GetExternalData(AbilityDataHandle);
+	if (AbilityDataFragment.IsAttacking)
+	{
+		return EStateTreeRunStatus::Running;
+	}
+	return EStateTreeRunStatus::Succeeded;
+
+	/*
 	const FMassStateTreeExecutionContext& MassStateTreeContext = static_cast<FMassStateTreeExecutionContext&>(Context);
 	UMassSignalSubsystem& SignalSubsystem = Context.GetExternalData(MassSignalSubsystemHandle);
 	FAnimationFragment& AnimationFragment = Context.GetExternalData(AnimationFragmentHandle);
-	FInstanceDataType& InstanceData = Context.GetInstanceData(*this);
+	//FInstanceDataType& InstanceData = Context.GetInstanceData(*this);
 	USmbSubsystem& SmbSubsystem = Context.GetExternalData(SmbSubsystemHandle);
 	FTransform Transform = Context.GetExternalData(EntityTransformHandle).GetTransform();
 	FTeamFragment TeamFragment = Context.GetExternalData(TeamFragmentHandle);
@@ -811,7 +841,7 @@ EStateTreeRunStatus FAttackWithSkill::Tick(FStateTreeExecutionContext& Context, 
 			NiagaraContainer->NiagaraComponent.Get()->SetAsset(NiagaraSystem.Get());
 			NiagaraContainer->NiagaraComponent->SetWorldLocation(Transform.GetLocation());
 		}
-	}
+	} 
 	
 	float TimeRemaining = InstanceData.SkillData->TimeUntilHit+InstanceData.SkillData->RecoveryTime-InstanceData.TimeInAttack;
 	if (TimeRemaining <= 0.f)
@@ -829,7 +859,7 @@ EStateTreeRunStatus FAttackWithSkill::Tick(FStateTreeExecutionContext& Context, 
 	SignalSubsystem.DelaySignalEntityDeferred(MassStateTreeContext.GetMassEntityExecutionContext(),
 		Smb::Signals::AttackFinished, MassStateTreeContext.GetEntity(),
 		InstanceData.SkillData->TimeUntilHit+InstanceData.SkillData->RecoveryTime-InstanceData.TimeInAttack);
-	return EStateTreeRunStatus::Running;
+	return EStateTreeRunStatus::Running; */
 }
 
 

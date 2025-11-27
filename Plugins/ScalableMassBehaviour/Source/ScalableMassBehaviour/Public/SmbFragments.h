@@ -6,13 +6,14 @@
 #include "ScalableMassBehaviour.h"
 #include "MassEntityElementTypes.h"
 #include "MassEntityHandle.h"
+#include "SmbAbilityData.h"
 #include "Animation/AnimSequence.h"
 #include "Animation/AnimationAsset.h"
 #include "Engine/StaticMesh.h"
-#include "Components/InstancedStaticMeshComponent.h"
 #if ENGINE_MAJOR_VERSION==5 && ENGINE_MINOR_VERSION>=7 
 #include "MassEntityTypes.h"
 #endif
+#include "Components/InstancedStaticMeshComponent.h"
 
 #include "SmbFragments.generated.h"
 
@@ -573,7 +574,7 @@ enum class EAbilityType : uint8
 };
 
 USTRUCT()
-struct FAbilityDataFragment : public FMassConstSharedFragment
+struct FAbilityDataFragment : public FMassFragment
 {
 	GENERATED_BODY()
 
@@ -582,34 +583,33 @@ struct FAbilityDataFragment : public FMassConstSharedFragment
 	FAbilityDataFragment GetValidated() const
 	{
 		FAbilityDataFragment Copy = *this;
-		Copy.Cooldown = FMath::Max(Copy.Cooldown, 0);
+		Copy.CurrentCooldown = FMath::Max(Copy.CurrentCooldown, 0);
+		Copy.TimeInAttack = FMath::Max(Copy.TimeInAttack, 0);
 
 		return Copy;
 	}
 
+	/* Default Ability, which will be overriden when StateTree runs an ability (for example, attack enemy) */
 	UPROPERTY(EditAnywhere, Category = "Smb")
-	float Cooldown = 1.f;
+	USmbAbilityData* CurrentAbility;
 
-	UPROPERTY(EditAnywhere, Category = "Smb")
-	float AbilityRange = 100.f;
+	UPROPERTY()
+	FMassEntityHandle TargetEntity = FMassEntityHandle();
 
-	UPROPERTY(EditAnywhere, Category = "Smb")
-	float EffectRadius = 100.f;
+	UPROPERTY()
+	FVector TargetLocation = FVector::ZeroVector;
 
-	UPROPERTY(EditAnywhere, Category = "Smb")
-	float EffectStrength = 10.f;
+	UPROPERTY()
+	float CurrentCooldown = 0.f;
 
-	UPROPERTY(EditAnywhere, Category = "Smb")
-	EAbilityType AbilityType = EAbilityType::MeleeAoe;
+	UPROPERTY()
+	float TimeInAttack = 0.f;
 
-	UPROPERTY(EditAnywhere, Category = "Smb")
-	TSoftObjectPtr<UNiagaraSystem> AbilityVfx = TSoftObjectPtr<UNiagaraSystem>();
+	UPROPERTY()
+	int32 TimesHit = 0;
 
-	UPROPERTY(EditAnywhere, Category = "Smb")
-	EAnimationState AbilityAnimation = EAnimationState::Attacking;
-	
-	UPROPERTY(EditAnywhere, Category = "Smb")
-	float EffectTriggerTime = 0.2f; 
+	UPROPERTY()
+	bool IsAttacking = false;
 };
 
 USTRUCT()

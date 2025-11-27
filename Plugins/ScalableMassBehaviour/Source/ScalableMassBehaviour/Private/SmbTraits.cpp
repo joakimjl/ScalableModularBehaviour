@@ -77,8 +77,7 @@ void USmbAbilitiesTrait::BuildTemplate(FMassEntityTemplateBuildContext& BuildCon
 	BuildContext.RequireFragment<FTransformFragment>();
 
 	FMassEntityManager& MassEntityManager = UE::Mass::Utils::GetEntityManagerChecked(World);
-	
-	const FAbilityDataFragment AbilityDataFragment = InAbilityDataFragment.GetValidated();
-	const FConstSharedStruct& SharedAbilityDataFragment = MassEntityManager.GetOrCreateConstSharedFragment<FAbilityDataFragment>(AbilityDataFragment);
-	BuildContext.AddConstSharedFragment(SharedAbilityDataFragment);
+
+	FAbilityDataFragment& AbilityDataFragment = BuildContext.AddFragment_GetRef<FAbilityDataFragment>();
+	AbilityDataFragment = InAbilityDataFragment.GetValidated();
 }

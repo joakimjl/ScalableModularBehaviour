@@ -26,6 +26,8 @@
 #include "SmbTraits.h"
 #include "SmbProjectileHandler.h"
 #include "AI/NavigationSystemBase.h"
+#include "Kismet/GameplayStatics.h"
+#include "SmbNiagaraContainer.h"
 #include "NavigationSystem.h"
 
 
@@ -46,6 +48,8 @@ void USmbSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	Grid = NewObject<UGrid>();
 
 	RegisteredResources = TMap<EProcessable, FProcessableArr>();
+
+	AbilitySpawningDataArray = TArray<FAbilitySpawningData>();
 
 #if WITH_EDITOR
 	UMassSettings* Settings  = GetMutableDefault<UMassSettings>();
@@ -73,6 +77,7 @@ void USmbSubsystem::Deinitialize()
 	CarryingFree.Empty();
 	PhysicsManagers.Empty();
 	ToDestroy.Empty();
+	AbilitySpawningDataArray.Empty();
 	
 	Super::Deinitialize();
 }
@@ -80,6 +85,30 @@ void USmbSubsystem::Deinitialize()
 void USmbSubsystem::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+	
+	for (int i = 0; i < AbilitySpawningDataArray.Num(); ++i)
+	{
+		FAbilitySpawningData& SpawningData = AbilitySpawningDataArray[i];
+		SpawningData.Delay -= DeltaTime;
+		if (SpawningData.Delay <= 0.f)
+		{
+			USmbAbilityData* Ability = SpawningData.AbilityData;
+			TSoftObjectPtr<USoundBase> Sound = Ability->AbilitySound;
+			if (Sound.IsValid())
+			{
+				UGameplayStatics::SpawnSoundAtLocation(GetWorld(),Sound.Get(),SpawningData.Transform.GetLocation());
+			}
+			TSoftObjectPtr<UNiagaraSystem> NiagaraSystem = Ability->AbilityVfx;
+			if (NiagaraSystem.IsValid())
+			{
+				ASmbNiagaraContainer* NiagaraContainer = GetWorld()->SpawnActor<ASmbNiagaraContainer>();
+				NiagaraContainer->NiagaraComponent.Get()->SetAsset(NiagaraSystem.Get());
+				NiagaraContainer->NiagaraComponent->SetWorldLocation(SpawningData.Transform.GetLocation());
+			}
+			AbilitySpawningDataArray.RemoveAtSwap(i);
+			i -= 1;
+		}
+	}
 }
 
 TStatId USmbSubsystem::GetStatId() const
@@ -728,6 +757,13 @@ void USmbSubsystem::EditMassConfig(FMassEntityConfig& MassEntityConfig)
 	//Save Edited Mass EntityConfig
 	//MassEntityConfig.
 }
+
+
+void USmbSubsystem::SpawnAbilityDataDeferred(USmbAbilityData* AbilityData, const FTransform& Transform, float Delay)
+{
+	AbilitySpawningDataArray.Add(FAbilitySpawningData(AbilityData,Transform,Delay));
+}
+
 
 
 

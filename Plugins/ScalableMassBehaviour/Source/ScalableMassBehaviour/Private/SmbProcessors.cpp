@@ -209,7 +209,7 @@ void URegisterProcessor::Execute(FMassEntityManager& EntityManager, FMassExecuti
 
 	EntityQuery.ForEachEntityChunk(Context, [this, DeltaTime](FMassExecutionContext& Context)
 	{
-		USmbSubsystem& ScaleSubsystem = Context.GetMutableSubsystemChecked<USmbSubsystem>();
+		USmbSubsystem& SmbSubsystem = Context.GetMutableSubsystemChecked<USmbSubsystem>();
 		TArrayView<FTransformFragment> TransformFragmentArrayView = Context.GetMutableFragmentView<FTransformFragment>();
 		TArrayView<FLocationDataFragment> LocationDataFragmentArrayView = Context.GetMutableFragmentView<FLocationDataFragment>();
 		TArrayView<FMassMoveTargetFragment> MoveTargetFragmentArrayView = Context.GetMutableFragmentView<FMassMoveTargetFragment>();
@@ -295,7 +295,7 @@ void URegisterProcessor::Execute(FMassEntityManager& EntityManager, FMassExecuti
 				LocationDataFragment.DidNotMoveStreak = 0;
 			}
 			FMassEntityHandle EntityHandle = Context.GetEntity(EntityIndex);
-			FVector NewOldLocation = ScaleSubsystem.RegisterToGrid(Location,
+			FVector NewOldLocation = SmbSubsystem.RegisterToGrid(Location,
 				EntityHandle,
 				LocationDataFragment.OldLocation);
 			LocationDataFragment.OldLocation = NewOldLocation;
@@ -336,7 +336,7 @@ void UCollisionProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 
 	EntityQuery.ParallelForEachEntityChunk(Context, [this, DeltaTime](FMassExecutionContext& Context)
 	{
-		USmbSubsystem& ScaleSubsystem = Context.GetMutableSubsystemChecked<USmbSubsystem>();
+		USmbSubsystem& SmbSubsystem = Context.GetMutableSubsystemChecked<USmbSubsystem>();
 		TArrayView<FTransformFragment> TransformFragmentArrayView = Context.GetMutableFragmentView<FTransformFragment>();
 		TArrayView<FCollisionDataFragment> CollisionDataFragmentArrayView = Context.GetMutableFragmentView<FCollisionDataFragment>();
 		TArrayView<FAgentRadiusFragment> AgentRadiusFragmentArrayView = Context.GetMutableFragmentView<FAgentRadiusFragment>();
@@ -350,7 +350,7 @@ void UCollisionProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			CollisionDataFragment.TimeSinceLastCheck += DeltaTime*FMath::RandRange(0.8f,1.2f);
 			if (!(CollisionDataFragment.TimeSinceLastCheck <= CollisionDataFragment.CheckDelay))
 			{
-				TArray<FMassEntityHandle> Handles = ScaleSubsystem.GetNumberClosestEntities(Location,
+				TArray<FMassEntityHandle> Handles = SmbSubsystem.GetNumberClosestEntities(Location,
 					AgentRadiusFragment.Radius*2.1f,
 					CollisionDataFragment.MaxEntitiesToCheck);
 				TStaticArray<FMassEntityHandle, COLLISION_ARR_SIZE> StaticHandlesArray;
@@ -413,7 +413,7 @@ void ULocateEnemy::Execute(FMassEntityManager& EntityManager, FMassExecutionCont
 	
 	EntityQuery.ParallelForEachEntityChunk(Context, [DeltaTime](FMassExecutionContext& Context)
 	{
-		USmbSubsystem& ScaleSubsystem = Context.GetMutableSubsystemChecked<USmbSubsystem>();
+		USmbSubsystem& SmbSubsystem = Context.GetMutableSubsystemChecked<USmbSubsystem>();
 		UMassSignalSubsystem& SignalSubsystem = Context.GetMutableSubsystemChecked<UMassSignalSubsystem>();
 		TArrayView<FTransformFragment> TransformView = Context.GetMutableFragmentView<FTransformFragment>();
 		TArrayView<FNearEnemiesFragment> NearEnemiesFragmentView = Context.GetMutableFragmentView<FNearEnemiesFragment>();
@@ -430,7 +430,7 @@ void ULocateEnemy::Execute(FMassEntityManager& EntityManager, FMassExecutionCont
 			NearEnemiesFragment.TimeSinceLastCheck = 0.f+FMath::RandRange(0.f,NearEnemiesFragment.CheckPeriod/3);
 			FTransformFragment TransformFragment = TransformView[EntityIndex];
 			FTeamFragment TeamFragment = TeamFragmentView[EntityIndex];
-			NearEnemiesFragment.ClosestEnemies = ScaleSubsystem.GetNumberClosestEntities(
+			NearEnemiesFragment.ClosestEnemies = SmbSubsystem.GetNumberClosestEntities(
 				TransformFragment.GetTransform().GetLocation(),
 				NearEnemiesFragment.CheckRadius,
 				NearEnemiesFragment.AmountOfEnemies,
@@ -645,6 +645,212 @@ void UHeightProcessor::Execute(FMassEntityManager& EntityManager, FMassExecution
 		}
 	});
 }
+
+UAbilityProcessor::UAbilityProcessor()
+	:EntityQuery(*this)
+{
+	bAutoRegisterWithProcessingPhases = true;
+	ExecutionFlags = (int32)(EProcessorExecutionFlags::AllNetModes);
+	ExecutionOrder.ExecuteInGroup = UE::Mass::ProcessorGroupNames::Movement;
+}
+
+void UAbilityProcessor::ConfigureQueries(const TSharedRef<FMassEntityManager>& EntityManager)
+{
+	//FMassEntityQuery EntityQuery(EntityManager);
+
+	EntityQuery.AddRequirement<FTransformFragment>(EMassFragmentAccess::ReadWrite);
+	EntityQuery.AddRequirement<FTeamFragment>(EMassFragmentAccess::ReadWrite);
+	EntityQuery.AddSubsystemRequirement<USmbSubsystem>(EMassFragmentAccess::ReadWrite);
+	EntityQuery.AddSubsystemRequirement<UMassSignalSubsystem>(EMassFragmentAccess::ReadWrite);
+	EntityQuery.AddRequirement<FNearEnemiesFragment>(EMassFragmentAccess::ReadWrite);
+	EntityQuery.AddRequirement<FCollisionDataFragment>(EMassFragmentAccess::ReadWrite);
+	EntityQuery.AddRequirement<FLocationDataFragment>(EMassFragmentAccess::ReadWrite);
+	EntityQuery.AddRequirement<FAnimationFragment>(EMassFragmentAccess::ReadWrite);
+	EntityQuery.AddRequirement<FAbilityDataFragment>(EMassFragmentAccess::ReadWrite);
+}
+
+void UAbilityProcessor::Execute(FMassEntityManager& EntityManager, FMassExecutionContext& Context)
+{
+	float DeltaTime = FMath::Min(Context.GetDeltaTimeSeconds(),0.1f);
+	
+	EntityQuery.ForEachEntityChunk(Context, [DeltaTime](FMassExecutionContext& Context)
+	{
+		TArrayView<FTransformFragment> TransformFragmentView = Context.GetMutableFragmentView<FTransformFragment>();
+		TArrayView<FTeamFragment> TeamFragmentView = Context.GetMutableFragmentView<FTeamFragment>();
+		TArrayView<FNearEnemiesFragment> NearEnemiesFragmentView = Context.GetMutableFragmentView<FNearEnemiesFragment>();
+		TArrayView<FCollisionDataFragment> CollisionDataFragmentView = Context.GetMutableFragmentView<FCollisionDataFragment>();
+		TArrayView<FLocationDataFragment> LocationDataFragmentView = Context.GetMutableFragmentView<FLocationDataFragment>();
+		TArrayView<FAnimationFragment> AnimationFragmentView = Context.GetMutableFragmentView<FAnimationFragment>();
+		USmbSubsystem& SmbSubsystem = Context.GetMutableSubsystemChecked<USmbSubsystem>();
+		UMassSignalSubsystem& SignalSubsystem = Context.GetMutableSubsystemChecked<UMassSignalSubsystem>();
+		TArrayView<FAbilityDataFragment> AbilityDataFragmentView = Context.GetMutableFragmentView<FAbilityDataFragment>();
+
+		for (FMassExecutionContext::FEntityIterator EntityIt = Context.CreateEntityIterator(); EntityIt; ++EntityIt)
+		{
+			FAbilityDataFragment& AbilityDataFragment = AbilityDataFragmentView[EntityIt];
+			if (!AbilityDataFragment.IsAttacking)
+			{
+				AbilityDataFragment.TimeInAttack = 0.f;
+				continue;
+			}
+			FMassEntityManager& EntityManager = Context.GetEntityManagerChecked();
+			if (!EntityManager.IsEntityValid(Context.GetEntity(EntityIt))) continue;
+			
+			FTransformFragment& TransformFragment = TransformFragmentView[EntityIt];
+			FTeamFragment& TeamFragment = TeamFragmentView[EntityIt];
+			FNearEnemiesFragment& EnemiesNear = NearEnemiesFragmentView[EntityIt];
+			FCollisionDataFragment& CollisionDataFragment = CollisionDataFragmentView[EntityIt];
+			FLocationDataFragment& LocationDataFragment = LocationDataFragmentView[EntityIt];
+			FAnimationFragment& AnimationFragment = AnimationFragmentView[EntityIt];
+
+			FMassEntityHandle EnemyHandle = AbilityDataFragment.TargetEntity;
+			if (SmbSubsystem.IsEntityValidManager(EnemyHandle))
+			{
+				AbilityDataFragment.TargetLocation = SmbSubsystem.GetEntityLocation(EnemyHandle);
+			} else
+			{
+				if (EnemiesNear.ClosestEnemies.Num() <= 0)
+				{
+					AbilityDataFragment.IsAttacking = false;
+					AbilityDataFragment.TimeInAttack = 0.f;
+					AbilityDataFragment.TimesHit = 0;
+					SignalSubsystem.SignalEntityDeferred(Context, Smb::Signals::AttackFinished, Context.GetEntity(EntityIt));
+					continue;
+				}
+				AbilityDataFragment.TargetEntity = EnemiesNear.ClosestEnemies[0];
+				if (SmbSubsystem.IsEntityValidManager(EnemiesNear.ClosestEnemies[0]))
+				{
+					AbilityDataFragment.TargetLocation = SmbSubsystem.GetEntityLocation(EnemiesNear.ClosestEnemies[0]);
+				} else
+				{
+					AbilityDataFragment.IsAttacking = false;
+					AbilityDataFragment.TimeInAttack = 0.f;
+					AbilityDataFragment.TimesHit = 0;
+					SignalSubsystem.SignalEntityDeferred(Context, Smb::Signals::AttackFinished, Context.GetEntity(EntityIt));
+					continue;
+				}
+			}
+			FVector Location = AbilityDataFragment.TargetLocation;
+			FTransform Transform = TransformFragment.GetMutableTransform();
+
+			// Too far away
+			//if ((Location-Transform.GetLocation()).Size() >= AbilityDataFragment.CurrentAbility->Range)
+			//{
+			//	AbilityDataFragment.IsAttacking = false;
+			//	AbilityDataFragment.TimeInAttack = 0.f;
+			//	AbilityDataFragment.TimesHit = 0;
+			//	SignalSubsystem.SignalEntityDeferred(Context, Smb::Signals::AttackFinished, Context.GetEntity(EntityIt));
+			//	continue;
+			//}
+
+			AbilityDataFragment.TimeInAttack += DeltaTime;
+
+			// Wait if not hitting yet
+			if (AbilityDataFragment.TimeInAttack <= AbilityDataFragment.CurrentAbility->TimeUntilHit) continue;
+
+			USmbAbilityData* Ability = AbilityDataFragment.CurrentAbility;
+
+			if (AbilityDataFragment.TimesHit < 1)
+			{
+				AbilityDataFragment.TimesHit += 1;
+				
+				FVector EnemyLocation = AbilityDataFragment.TargetLocation;
+				EnemyHandle = FMassEntityHandle(AbilityDataFragment.TargetEntity.Index, AbilityDataFragment.TargetEntity.SerialNumber);
+				if (SmbSubsystem.IsEntityValidManager(EnemyHandle))
+				{
+					EnemyLocation = SmbSubsystem.GetEntityLocation(EnemyHandle);
+				} else
+				{
+					EnemyLocation = Transform.GetLocation();
+				}
+
+				// Ability finished
+				if (AbilityDataFragment.TimeInAttack >= Ability->TimeUntilHit+Ability->RecoveryTime)
+				{
+					AnimationFragment.CurrentState = EAnimationState::Idle;
+					AbilityDataFragment.IsAttacking = false;
+					AbilityDataFragment.TimeInAttack = 0.f;
+					AbilityDataFragment.TimesHit = 0;
+					SignalSubsystem.SignalEntityDeferred(Context, Smb::Signals::AttackFinished, Context.GetEntity(EntityIt));
+					continue;
+				}
+
+				FGameplayTagContainer AbilityContainer = FGameplayTagContainer(
+					FGameplayTag::RequestGameplayTag(FName("Skill.Type")));
+				//Find skill type
+				AbilityContainer = Ability->AbilityTagContainer.Filter(AbilityContainer);
+				if (AbilityContainer.Num() == 0)
+				{
+					UE_LOG(LogTemp, Warning, TEXT("No skill found"));
+					AbilityDataFragment.IsAttacking = false;
+					AbilityDataFragment.TimeInAttack = 0.f;
+					AbilityDataFragment.TimesHit = 0;
+					SignalSubsystem.SignalEntityDeferred(Context, Smb::Signals::AttackFinished, Context.GetEntity(EntityIt));
+					continue;
+				}
+				FGameplayTagContainer AllAbilityContainer = FGameplayTagContainer(
+					FGameplayTag::RequestGameplayTag(FName("Skill")));
+				AllAbilityContainer = Ability->AbilityTagContainer.Filter(AllAbilityContainer);
+				
+				//Switch on skill type
+				//If melee skill
+				
+				if (AllAbilityContainer.HasAny(FGameplayTagContainer(FGameplayTag::RequestGameplayTag(FName("Skill.Type.Melee")))))
+				{
+					int32 Killed = 0;
+					if (AllAbilityContainer.HasAny(FGameplayTagContainer(FGameplayTag::RequestGameplayTag(FName("Skill.Modifier.Area")))))
+					{
+						SmbSubsystem.DealDamageAoe(EnemyLocation,
+						Ability->AreaOfEffect,
+						Ability->Damage,
+						EDamageType::Normal,
+						TeamFragment.TeamID,
+						Killed);
+					} else
+					{
+						SmbSubsystem.DealDamageToEnemy(
+							AbilityDataFragment.TargetEntity,
+							Ability->Damage,
+							EDamageType::Normal);
+					}
+				}
+				else if (AbilityContainer.HasAny(FGameplayTagContainer(FGameplayTag::RequestGameplayTag(FName("Skill.Type.Ranged")))))
+				{
+					SmbSubsystem.AddProjectile(Transform.GetLocation()+FVector::UpVector*180.f,
+						EnemyLocation,
+						Ability,
+						TeamFragment.TeamID);
+				}
+				else if (AbilityContainer.HasAny(FGameplayTagContainer(FGameplayTag::RequestGameplayTag(FName("Skill.Type.Cast")))))
+				{
+					//TODO fire cast projectile and remove mana
+					UE_LOG(LogTemp, Warning, TEXT("Cast not implemented"));
+				}
+				else if (AbilityContainer.HasAny(FGameplayTagContainer(FGameplayTag::RequestGameplayTag(FName("Skill.Type.Gather")))))
+				{
+					//TODO gather nearby
+					UE_LOG(LogTemp, Warning, TEXT("Gather not implemented"));
+				}
+				else
+				{
+					UE_LOG(LogTemp, Warning, TEXT("No skill found"));
+					AbilityDataFragment.IsAttacking = false;
+					AbilityDataFragment.TimeInAttack = 0.f;
+					AbilityDataFragment.TimesHit = 0;
+					SignalSubsystem.SignalEntityDeferred(Context, Smb::Signals::AttackFinished, Context.GetEntity(EntityIt));
+					continue;
+				}
+				
+				//Spawn VFX if should hit
+
+				SmbSubsystem.SpawnAbilityDataDeferred(Ability, Transform, 0.f);
+			}
+		}
+	});
+}
+
+
+
 
 /*
 UScaleProcessors::UScaleProcessors()

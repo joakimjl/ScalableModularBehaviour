@@ -558,6 +558,8 @@ struct FAttackWithSkill : public FMassStateTreeTaskBase
 	TStateTreeExternalDataHandle<FLocationDataFragment> LocationDataHandle;
 	
 	TStateTreeExternalDataHandle<FNearEnemiesFragment> NearEnemiesFragHandle;
+
+	TStateTreeExternalDataHandle<FAbilityDataFragment> AbilityDataHandle;
 	
 	TStateTreeExternalDataHandle<UMassCrowdRepresentationSubsystem> MassCrowdRepHandle;
 	TStateTreeExternalDataHandle<USmbSubsystem> SmbSubsystemHandle;

@@ -51,10 +51,7 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Smb")
 	float RecoveryTime = 0.2f;
 
-	/* If ability uses a projectile, what speed should it have */
-	UPROPERTY(EditAnywhere, Category = "Smb")
-	float Speed = 0.f;
-
+	/* To be implemented */
 	UPROPERTY(EditAnywhere, Category = "Smb")
 	float ManaCost = 0.f;
 
@@ -66,9 +63,17 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Smb")
 	TSoftObjectPtr<USoundBase> AbilitySound = TSoftObjectPtr<USoundBase>();
 
+	/* Attack is a projectile */
+	UPROPERTY(EditAnywhere, Category = "Smb")
+	bool bIsProjectile = false;
+
+	/* If ability uses a projectile, what speed should it have */
+	UPROPERTY(EditAnywhere, Category = "Smb", meta=(EditCondition = "bIsProjectile"))
+	float Speed = 0.f;
+	
 	/* Projectile Mesh */
-	//UPROPERTY(EditAnywhere, Category = "Smb")
-	//TSoftObjectPtr<UStaticMesh> ProjectileMesh = TSoftObjectPtr<UStaticMesh>();
+	UPROPERTY(EditAnywhere, Category = "Smb", meta=(EditCondition = "bIsProjectile"))
+	TSoftObjectPtr<UStaticMesh> ProjectileMesh = TSoftObjectPtr<UStaticMesh>();
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Smb")
 	FGameplayTagContainer AbilityTagContainer;
