@@ -25,8 +25,8 @@ public class ScalableMassBehaviour : ModuleRules
 		PublicDependencyModuleNames.AddRange(
 			new string[]
 			{
-				"Core",
-				"MassRepresentation", "Niagara" 
+				"Core", "MassRepresentation", "Niagara"
+				
 				// ... add other public dependencies that you statically link with here ...
 			}
 			);
@@ -35,26 +35,14 @@ public class ScalableMassBehaviour : ModuleRules
 		PrivateDependencyModuleNames.AddRange(
 			new string[]
 			{
-				"CoreUObject",
-				"Engine",
-				"Slate",
-				"SlateCore", 
-				"MassEntity",
-				"MassActors",
-				"MassMovement",
-				"MassNavigation", 
-				"MassAIBehavior", 
-				"MassCrowd",
-				"MassCommon",
-				"Niagara", 
-				"MassEQS",
-				"AIModule",
-				"StateTreeModule",
-				"MassSignals",
-				"MassSpawner",
-				"AnimationCore",
-				"NavigationSystem",
-				"GameplayTags"
+				"CoreUObject", "Engine", "Slate",
+				"SlateCore", "MassEntity", "MassActors",
+				"MassMovement", "MassNavigation", "MassAIBehavior", 
+				"MassCrowd", "MassCommon", "Niagara", 
+				"MassEQS", "AIModule", "StateTreeModule",
+				"MassSignals", "MassSpawner", "AnimationCore",
+				"NavigationSystem", "GameplayTags", "MassReplication",
+				"NetCore", "MassLOD", "StructUtils"
 				
 				// ... add private dependencies that you statically link with here ...	
 			}

@@ -2,6 +2,9 @@
 
 
 #include "SmbSpawner.h"
+#include "EnvironmentQuery/EnvQueryInstanceBlueprintWrapper.h"
+#include "MassSpawnerSubsystem.h"
+#include "MassEntityConfigAsset.h"
 
 
 // Sets default values
@@ -9,12 +12,22 @@ ASmbSpawner::ASmbSpawner()
 {
 	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
+	bReplicates = true;
+	bAlwaysRelevant = true;
 }
 
 // Called when the game starts or when spawned
 void ASmbSpawner::BeginPlay()
 {
 	Super::BeginPlay();
+
+	Super::BeginPlay();
+        
+	// Only spawn on server
+	if (!HasAuthority())
+	{
+		return;
+	}
 	
 }
 

@@ -19,6 +19,7 @@
 #include "MassRepresentationFragments.h"
 #include "MassSettings.h"
 #include "MassBehaviorSettings.h"
+#include "MassReplicationSubsystem.h"
 #include "SmbSignalProcessor.h"
 #include "OrientedBoxTypes.h"
 #include "Engine/World.h"
@@ -29,16 +30,23 @@
 #include "Kismet/GameplayStatics.h"
 #include "SmbNiagaraContainer.h"
 #include "NavigationSystem.h"
+#include "SmbAssetManager.h"
+#include "MassEntityConfigAsset.h"
+#include "MassReplicationFragments.h"
+#include "MassObserverNotificationTypes.h"
+#include "MassEntityConfigAsset.h"
+#include "Engine/AssetManager.h"
+#include "ScalableMassBehaviour/Replication/Public/SmbMassClientBubbleInfo.h"
 
 
 void USmbSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
-	Collection.InitializeDependency(UMassEntitySubsystem::StaticClass());
-	Collection.InitializeDependency(UMassSignalSubsystem::StaticClass());
 	Super::Initialize(Collection);
 	
-	UMassEntitySubsystem* MassEntitySubsystem = GetWorld()->GetSubsystem<UMassEntitySubsystem>();
-	EntityManagerPtr = &MassEntitySubsystem->GetMutableEntityManager();
+	auto* MassSubsystem = Collection.InitializeDependency<UMassEntitySubsystem>();
+	check(MassSubsystem);
+	Collection.InitializeDependency(UMassSignalSubsystem::StaticClass());
+	EntityManagerPtr = MassSubsystem->GetMutableEntityManager().AsShared();
 	UE::Mass::FEntityBuilder Builder(*EntityManagerPtr);
 	EntityBuilder = &Builder;
 
@@ -64,10 +72,84 @@ void USmbSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	FProcessableReqArr ProcessReqArray = FProcessableReqArr();
 }
 
+void USmbSubsystem::PostInitialize()
+{
+	auto* ReplicationSubsystem = UWorld::GetSubsystem<UMassReplicationSubsystem>(GetWorld());
+	check(ReplicationSubsystem);
+
+	ReplicationSubsystem->RegisterBubbleInfoClass(ASmbUnitClientBubbleInfo::StaticClass());
+
+	auto* SpawnerSubsystem = UWorld::GetSubsystem<UMassSpawnerSubsystem>(GetWorld());
+	check(SpawnerSubsystem);
+
+	if (USmbAssetManager::Get()->GameData)
+	{
+		UE_LOG(LogTemp, Display, TEXT("GameData loaded: %s"), *USmbAssetManager::Get()->GameData->GetName());
+		if (USmbAssetManager::Get()->GameData->UnitEntityConfig)
+		{
+			UE_LOG(LogTemp, Display, TEXT("UnitEntityConfig: %s"), *USmbAssetManager::Get()->GameData->UnitEntityConfig->GetName());
+			// Force template creation and registration
+			const auto& EntityTemplate = USmbAssetManager::Get()->GameData->UnitEntityConfig->GetOrCreateEntityTemplate(*GetWorld());
+			if (EntityTemplate.IsValid())
+			{
+				UE_LOG(LogTemp, Display, TEXT("Entity template registered successfully"));
+			}
+			else
+			{
+				UE_LOG(LogTemp, Error, TEXT("Failed to create entity template"));
+			}
+		}
+		else
+		{
+			UE_LOG(LogTemp, Error, TEXT("UnitEntityConfig is null in GameData"));
+		}
+	}
+	else
+	{
+		UE_LOG(LogTemp, Error, TEXT("GameData is null, check asset manager configuration"));
+	}
+
+}
+
+bool USmbSubsystem::LoadEntityTemplate(const FPrimaryAssetId& PrimaryAssetId)
+{
+	LoadAssetSync<USmbGameData>(PrimaryAssetId);
+	UE_LOG(LogTemp, Display, TEXT("GameData->UnitEntityConfig is %s"), *(USmbAssetManager::Get()->GameData->GetName()));
+	const auto& EntityTemplate = USmbAssetManager::Get()->GameData->UnitEntityConfig->GetOrCreateEntityTemplate(*GetWorld());
+	ensure(EntityTemplate.IsValid());
+	return true;
+}
+
+bool USmbSubsystem::LoadEntityTemplateConfig(const UMassEntityConfigAsset* ConfigAsset)
+{
+	UE_LOG(LogTemp, Display, TEXT("Loading entity template config %s"), *(ConfigAsset->GetName()));
+	if (!ConfigAsset)
+	{
+		UE_LOG(LogTemp, Error, TEXT("ConfigAsset is null"));
+		return false;
+	}
+
+	
+
+	// Force template creation
+	const auto& EntityTemplate = ConfigAsset->GetOrCreateEntityTemplate(*GetWorld());
+	if (!EntityTemplate.IsValid())
+	{
+		UE_LOG(LogTemp, Error, TEXT("Failed to create entity template from config asset"));
+		return false;
+	}
+
+	UE_LOG(LogTemp, Display, TEXT("Successfully loaded entity template"));
+	return true;
+}
+
+
+
+
 void USmbSubsystem::Deinitialize()
 {
 	EntityBuilder = nullptr;
-	EntityManagerPtr = nullptr;
+	EntityManagerPtr.Reset();
 
 	RegisteredResources.Empty();
 	Grid->EmptySelf();
@@ -767,6 +849,30 @@ void USmbSubsystem::SpawnAbilityDataDeferred(USmbAbilityData* AbilityData, const
 }
 
 
+void USmbSubsystem::Spawn(UMassEntityConfigAsset* EntityConfig, const FTransform& Transform, int Count)
+{
+	const FMassEntityTemplate& EntityTemplate = EntityConfig->GetOrCreateEntityTemplate(*GetWorld());
+
+	TArray<FMassEntityHandle> Entities;
+	auto CreationContext = EntityManagerPtr->BatchCreateEntities(EntityTemplate.GetArchetype(), EntityTemplate.GetSharedFragmentValues(), Count, Entities);
+	TConstArrayView<FInstancedStruct> FragmentInstances = EntityTemplate.GetInitialFragmentValues();
+	EntityManagerPtr->BatchSetEntityFragmentValues(CreationContext->GetEntityCollections(*EntityManagerPtr.Get()), FragmentInstances);
+
+	int SqrtCount = FMath::Sqrt((float)Count);
+
+	int j = 0;
+	for (int i = 0; i < Entities.Num(); ++i)
+	{
+		FMassEntityView EntityView(EntityTemplate.GetArchetype(), Entities[i]);
+		auto& TransformData = EntityView.GetFragmentData<FTransformFragment>();
+
+		FVector RabbitLocation = Transform.GetLocation();
+		RabbitLocation.X = (i % SqrtCount) * 100;
+		if (i % SqrtCount == 0) ++j;
+		RabbitLocation.Y = j * 100;
+		TransformData.SetTransform(FTransform(RabbitLocation));
+	}
+}
 
 
 

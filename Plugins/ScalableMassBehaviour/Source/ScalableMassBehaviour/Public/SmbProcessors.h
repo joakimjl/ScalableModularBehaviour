@@ -152,6 +152,23 @@ private:
 	FMassEntityQuery EntityQuery;
 };
 
+UCLASS()
+class SCALABLEMASSBEHAVIOUR_API UClientMoveProcessor : public UMassProcessor
+{
+	GENERATED_BODY()
+
+public:
+	UClientMoveProcessor();
+
+protected:
+	virtual void ConfigureQueries(const TSharedRef<FMassEntityManager>& EntityManager) override;
+
+	virtual void Execute(FMassEntityManager& EntityManager, FMassExecutionContext& Context) override;
+	
+private:
+	FMassEntityQuery EntityQuery;
+};
+
 /*
 UCLASS()
 class SCALABLEMASSBEHAVIOUR_API UScaleProcessors : public UMassProcessor

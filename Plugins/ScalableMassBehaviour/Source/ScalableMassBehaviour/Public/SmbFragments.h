@@ -591,7 +591,7 @@ struct FAbilityDataFragment : public FMassFragment
 
 	/* Default Ability, which will be overriden when StateTree runs an ability (for example, attack enemy) */
 	UPROPERTY(EditAnywhere, Category = "Smb")
-	USmbAbilityData* CurrentAbility;
+	USmbAbilityData* CurrentAbility = nullptr;
 
 	UPROPERTY()
 	FMassEntityHandle TargetEntity = FMassEntityHandle();

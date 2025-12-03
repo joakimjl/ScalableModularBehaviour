@@ -572,7 +572,7 @@ UHeightProcessor::UHeightProcessor()
 	:EntityQuery(*this)
 {
 	bAutoRegisterWithProcessingPhases = true;
-	ExecutionFlags = (int32)(EProcessorExecutionFlags::AllNetModes);
+	ExecutionFlags = (int32)(EProcessorExecutionFlags::Server);
 	ExecutionOrder.ExecuteAfter.Add(UE::Mass::ProcessorGroupNames::Movement);
 }
 
@@ -602,6 +602,7 @@ void UHeightProcessor::Execute(FMassEntityManager& EntityManager, FMassExecution
 		
 		for (FMassExecutionContext::FEntityIterator EntityIt = Context.CreateEntityIterator(); EntityIt; ++EntityIt)
 		{
+			if (!NavMeshSubsystem) continue;
 			FTransformFragment& TransformFragment = TransformFragmentView[EntityIt];
 			FTransform& Transform = TransformFragment.GetMutableTransform();
 			FHeightFragment& HeightFragment = HeightFragmentView[EntityIt];
@@ -869,6 +870,32 @@ void UAbilityProcessor::Execute(FMassEntityManager& EntityManager, FMassExecutio
 	});
 }
 
+UClientMoveProcessor::UClientMoveProcessor()
+	:EntityQuery(*this)
+{
+	bAutoRegisterWithProcessingPhases = true;
+	ExecutionFlags = (int32)(EProcessorExecutionFlags::Client);
+	ExecutionOrder.ExecuteInGroup = UE::Mass::ProcessorGroupNames::Movement;
+}
+
+void UClientMoveProcessor::ConfigureQueries(const TSharedRef<FMassEntityManager>& EntityManager)
+{
+	//FMassEntityQuery EntityQuery(EntityManager);
+
+	EntityQuery.AddRequirement<FTransformFragment>(EMassFragmentAccess::ReadWrite);
+	
+	
+}
+
+void UClientMoveProcessor::Execute(FMassEntityManager& EntityManager, FMassExecutionContext& Context)
+{
+	float DeltaTime = FMath::Min(Context.GetDeltaTimeSeconds(),0.1f);
+	
+	EntityQuery.ForEachEntityChunk(Context, [DeltaTime](FMassExecutionContext& Context)
+	{
+		TArrayView<FTransformFragment> TransformFragmentView = Context.GetMutableFragmentView<FTransformFragment>();
+	});
+}
 
 
 

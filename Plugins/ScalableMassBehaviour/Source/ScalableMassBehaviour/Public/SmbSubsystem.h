@@ -3,9 +3,11 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "MassEntityConfigAsset.h"
 #include "Subsystems/WorldSubsystem.h"
 #include "ScalableMassBehaviour.h"
 #include "MassSubsystemBase.h"
+#include "SmbAssetManager.h"
 #include "SmbFragments.h"
 #include "TaskSyncManager.h"
 
@@ -203,11 +205,15 @@ class USmbSubsystem : public UMassTickableSubsystemBase
 
 	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
 	virtual void Deinitialize() override;
+	virtual void PostInitialize() override;
 	virtual void Tick(float DeltaTime) override;
 	//TStatid as needed:
 	virtual TStatId GetStatId() const override;
 
 public:
+	UFUNCTION(BlueprintCallable, Category = "Smb")
+	void Spawn(UMassEntityConfigAsset* EntityConfig, const FTransform& Transform, int Count = 1);
+	
 	UPROPERTY(BlueprintReadWrite, Category = "Smb")
 	float TimeSinceRemoval = 0.f;
 	UFUNCTION(BlueprintCallable, Category = "Smb")
@@ -309,7 +315,27 @@ public:
 	TArray<FPhysicsManagerStruct> PhysicsManagers = TArray<FPhysicsManagerStruct>();
 	UPROPERTY(EditAnywhere, Category = "Smb")
 	TArray<ASmbProjectileHandler*> ProjectileHandlerArray = TArray<ASmbProjectileHandler*>();
+
+	template<class DataAssetType>
+	TObjectPtr<DataAssetType> LoadAssetSync(const FPrimaryAssetId& PrimaryAsset)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Loading Asset %s"), *PrimaryAsset.ToString());
+		TSharedPtr<FStreamableHandle> DataHandle = USmbAssetManager::Get()->LoadPrimaryAsset(PrimaryAsset);
+		if (DataHandle.IsValid())
+		{
+			DataHandle->WaitUntilComplete(0.f, false);
+			return USmbAssetManager::Get()->GetPrimaryAssetObjectClass<DataAssetType>(DataHandle->GetLoadedAsset()->GetPrimaryAssetId()).GetDefaultObject();
+		}
+		return nullptr;
+	}
 	
+	/* Load Entity Template (Required before spawning) */
+	UFUNCTION(BlueprintCallable, Category = "Smb")
+	bool LoadEntityTemplate(const FPrimaryAssetId& PrimaryAssetId);
+
+	UFUNCTION(BlueprintCallable, Category = "Smb")
+	bool LoadEntityTemplateConfig(const UMassEntityConfigAsset* ConfigAsset);
+
 protected:
 
 	UFUNCTION()
@@ -321,7 +347,7 @@ protected:
 	UPROPERTY()
 	TArray<FMassEntityHandle> ToDestroy = TArray<FMassEntityHandle>();
 	
-	FMassEntityManager* EntityManagerPtr = nullptr;
+	TSharedPtr<FMassEntityManager> EntityManagerPtr;
 	UE::Mass::FEntityBuilder* EntityBuilder = nullptr;
 
 	UPROPERTY()
