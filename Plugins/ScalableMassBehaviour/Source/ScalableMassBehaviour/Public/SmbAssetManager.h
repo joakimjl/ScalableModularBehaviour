@@ -7,9 +7,6 @@
 #include "Engine/AssetManager.h"
 #include "SmbAssetManager.generated.h"
 
-/**
- * 
- */
 UCLASS()
 class SCALABLEMASSBEHAVIOUR_API USmbAssetManager : public UAssetManager
 {
@@ -60,4 +57,3 @@ public:
 		return FPrimaryAssetId("SmbGameData", GetFName());
 	}
 };
-

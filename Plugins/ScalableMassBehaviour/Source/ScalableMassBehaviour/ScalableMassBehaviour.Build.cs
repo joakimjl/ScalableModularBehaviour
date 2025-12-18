@@ -41,8 +41,8 @@ public class ScalableMassBehaviour : ModuleRules
 				"MassCrowd", "MassCommon", "Niagara", 
 				"MassEQS", "AIModule", "StateTreeModule",
 				"MassSignals", "MassSpawner", "AnimationCore",
-				"NavigationSystem", "GameplayTags", "MassReplication",
-				"NetCore", "MassLOD", "StructUtils"
+				"NavigationSystem", "GameplayTags", "MassReplication", 
+				"NetCore", "MassLOD"
 				
 				// ... add private dependencies that you statically link with here ...	
 			}

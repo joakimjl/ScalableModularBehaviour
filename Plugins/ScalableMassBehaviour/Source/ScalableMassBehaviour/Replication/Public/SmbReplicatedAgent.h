@@ -64,22 +64,28 @@ protected:
 	TClientBubbleHandlerBase<AgentArrayItem>& OwnerHandler;
 };
 
-#if UE_REPLICATION_COMPILE_SERVER_CODE
+
 template<typename AgentArrayItem>
 void TSmbClientTargetPositionHandler<AgentArrayItem>::SetBubbleMoveTargetFromLocation(const FMassReplicatedAgentHandle Handle, const FVector& Location)
 {
-	check(OwnerHandler.AgentHandleManager.IsValidHandle(Handle));
-
-	const int32 AgentsIdx = OwnerHandler.AgentLookupArray[Handle.GetIndex()].AgentsIdx;
 	bool bMarkDirty = false;
+#if ENGINE_MAJOR_VERSION==5 && ENGINE_MINOR_VERSION>=7
+	auto Agent = OwnerHandler.GetAgentChecked(Handle);
+	FSmbReplicatedMoveTarget& ReplicatedMoveTarget = Agent.GetReplicatedMoveTargetDataMutable();
+#else
+	
+	check(OwnerHandler.AgentHandleManager.IsValidHandle(Handle));
+	
+	const int32 AgentsIdx = OwnerHandler.AgentLookupArray[Handle.GetIndex()].AgentsIdx;
 
 	AgentArrayItem& Item = (*OwnerHandler.Agents)[AgentsIdx];
 
-	checkf(Item.Agent.GetNetID().IsValid(), TEXT("TSmbClientTargetPositionHandler::SetBubbleMoveTargetFromLocation, Invalid ID! First Add the Agent!"));
+	checkf(Item.Agent.GetNetID().IsValid(), TEXT("TSmbClientTargetPositionHandler::SetBubbleMoveTargetFromLocation, Invalid AgentID"));
 
 	// GetReplicatedMoveTargetDataMutable() must be defined in your FReplicatedAgentBase derived class
 	FSmbReplicatedMoveTarget& ReplicatedMoveTarget = Item.Agent.GetReplicatedMoveTargetDataMutable();
-
+#endif
+	
 	// Only update the Pos and mark the item as dirty if it has changed more than the tolerance
 	const FVector Pos = Location;
 	if (!Pos.Equals(ReplicatedMoveTarget.TargetLocation, UE::Mass::Replication::PositionReplicateTolerance) &&
@@ -88,7 +94,7 @@ void TSmbClientTargetPositionHandler<AgentArrayItem>::SetBubbleMoveTargetFromLoc
 		ReplicatedMoveTarget.TargetLocation = Pos;
 		bMarkDirty = true;
 	}
-
+	
 	/*
 	const float Yaw = static_cast<float>(FMath::DegreesToRadians(Transform.GetRotation().Rotator().Yaw));
 
@@ -99,12 +105,19 @@ void TSmbClientTargetPositionHandler<AgentArrayItem>::SetBubbleMoveTargetFromLoc
 		bMarkDirty = true;
 	}*/
 
+#if ENGINE_MAJOR_VERSION==5 && ENGINE_MINOR_VERSION>=7
+	if (bMarkDirty)
+	{
+		//Mark Dirty
+	}
+#else
 	if (bMarkDirty)
 	{
 		OwnerHandler.Serializer->MarkItemDirty(Item);
 	}
-
+#endif
 }
+#if UE_REPLICATION_COMPILE_SERVER_CODE
 #endif //UE_REPLICATION_COMPILE_SERVER_CODE
 
 

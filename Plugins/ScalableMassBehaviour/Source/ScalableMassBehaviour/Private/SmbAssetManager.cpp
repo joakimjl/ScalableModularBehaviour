@@ -24,6 +24,6 @@ void USmbAssetManager::PostInitialAssetScan()
 {
 	Super::PostInitialAssetScan();
 
-	GameData = LoadAssetSync<USmbGameData>(GameDataType);
-	ensure(GameData);
+	//GameData = LoadAssetSync<USmbGameData>(GameDataType);
+	//ensure(GameData); UNUSED
 }

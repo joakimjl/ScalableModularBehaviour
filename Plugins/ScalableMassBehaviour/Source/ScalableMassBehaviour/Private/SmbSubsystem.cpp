@@ -83,6 +83,7 @@ void USmbSubsystem::PostInitialize()
 	auto* SpawnerSubsystem = UWorld::GetSubsystem<UMassSpawnerSubsystem>(GetWorld());
 	check(SpawnerSubsystem);
 
+	/*
 	if (USmbAssetManager::Get()->GameData)
 	{
 		UE_LOG(LogTemp, Display, TEXT("GameData loaded: %s"), *USmbAssetManager::Get()->GameData->GetName());
@@ -108,7 +109,7 @@ void USmbSubsystem::PostInitialize()
 	else
 	{
 		UE_LOG(LogTemp, Error, TEXT("GameData is null, check asset manager configuration"));
-	}
+	}*/
 
 }
 
