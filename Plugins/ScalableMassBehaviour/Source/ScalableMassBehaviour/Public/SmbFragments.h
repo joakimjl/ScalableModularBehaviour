@@ -452,6 +452,9 @@ struct FLocationDataFragment : public FMassFragment
 
 	UPROPERTY()
 	int32 DidNotMoveStreak = 0;
+
+	UPROPERTY()
+	bool bIsFirstMove = true;
 };
 
 USTRUCT()

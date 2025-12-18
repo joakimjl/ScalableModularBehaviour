@@ -904,6 +904,12 @@ void UClientMoveProcessor::Execute(FMassEntityManager& EntityManager, FMassExecu
 			FLocationDataFragment& LocationDataFragment = LocationDataFragmentView[EntityIt];
 			FMassDesiredMovementFragment& DesiredMovementFragment = DesiredMovementFragmentsView[EntityIt];
 
+			if (LocationDataFragment.bIsFirstMove) 
+			{
+				TransformFragment.GetMutableTransform().SetLocation(LocationDataFragment.NextLocation);
+				LocationDataFragment.bIsFirstMove = false;
+			}
+			
 			if (LocationDataFragment.NextLocation != FVector::ZeroVector)
 			{
 				//UE_LOG(LogTemp, Display, TEXT("New Location"));
