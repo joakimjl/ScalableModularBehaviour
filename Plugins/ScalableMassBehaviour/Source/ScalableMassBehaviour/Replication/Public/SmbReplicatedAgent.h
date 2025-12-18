@@ -64,7 +64,7 @@ protected:
 	TClientBubbleHandlerBase<AgentArrayItem>& OwnerHandler;
 };
 
-
+#if UE_REPLICATION_COMPILE_SERVER_CODE
 template<typename AgentArrayItem>
 void TSmbClientTargetPositionHandler<AgentArrayItem>::SetBubbleMoveTargetFromLocation(const FMassReplicatedAgentHandle Handle, const FVector& Location)
 {
@@ -75,12 +75,12 @@ void TSmbClientTargetPositionHandler<AgentArrayItem>::SetBubbleMoveTargetFromLoc
 #else
 	
 	check(OwnerHandler.AgentHandleManager.IsValidHandle(Handle));
-	
+
 	const int32 AgentsIdx = OwnerHandler.AgentLookupArray[Handle.GetIndex()].AgentsIdx;
 
 	AgentArrayItem& Item = (*OwnerHandler.Agents)[AgentsIdx];
 
-	checkf(Item.Agent.GetNetID().IsValid(), TEXT("TSmbClientTargetPositionHandler::SetBubbleMoveTargetFromLocation, Invalid AgentID"));
+	checkf(Item.Agent.GetNetID().IsValid(), TEXT("TSmbClientTargetPositionHandler::SetBubbleMoveTargetFromLocation, Invalid ID! First Add the Agent!"));
 
 	// GetReplicatedMoveTargetDataMutable() must be defined in your FReplicatedAgentBase derived class
 	FSmbReplicatedMoveTarget& ReplicatedMoveTarget = Item.Agent.GetReplicatedMoveTargetDataMutable();
@@ -94,7 +94,7 @@ void TSmbClientTargetPositionHandler<AgentArrayItem>::SetBubbleMoveTargetFromLoc
 		ReplicatedMoveTarget.TargetLocation = Pos;
 		bMarkDirty = true;
 	}
-	
+
 	/*
 	const float Yaw = static_cast<float>(FMath::DegreesToRadians(Transform.GetRotation().Rotator().Yaw));
 
@@ -117,7 +117,6 @@ void TSmbClientTargetPositionHandler<AgentArrayItem>::SetBubbleMoveTargetFromLoc
 	}
 #endif
 }
-#if UE_REPLICATION_COMPILE_SERVER_CODE
 #endif //UE_REPLICATION_COMPILE_SERVER_CODE
 
 
