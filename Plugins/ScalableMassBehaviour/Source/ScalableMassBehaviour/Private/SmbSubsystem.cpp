@@ -124,13 +124,12 @@ bool USmbSubsystem::LoadEntityTemplate(const FPrimaryAssetId& PrimaryAssetId)
 
 bool USmbSubsystem::LoadEntityTemplateConfig(const UMassEntityConfigAsset* ConfigAsset)
 {
-	UE_LOG(LogTemp, Display, TEXT("Loading entity template config %s"), *(ConfigAsset->GetName()));
 	if (!ConfigAsset)
 	{
 		UE_LOG(LogTemp, Error, TEXT("ConfigAsset is null"));
 		return false;
 	}
-
+	UE_LOG(LogTemp, Display, TEXT("Loading entity template config %s"), *(ConfigAsset->GetName()));
 	
 
 	// Force template creation
