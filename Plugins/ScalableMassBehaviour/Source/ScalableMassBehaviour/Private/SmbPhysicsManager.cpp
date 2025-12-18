@@ -42,23 +42,29 @@ void ASmbPhysicsManager::Tick(float DeltaTime)
 				NiagaraComponent->SetVariableStaticMesh("UserStaticMesh",StaticMeshParticle.Get());
 			}
 		}
+	} else
+	{
+		if (TotalDead >= TotalSpawned)
+		{
+			FName PositionArray = "SpawnLocations";
+			FName Integer = "InTotalSpawned";
+			
+			if (NiagaraComponent && NiagaraComponent->IsRegistered())
+			{
+				NiagaraComponent->SetVariableInt(Integer,TotalDead);
+				UNiagaraDataInterfaceArrayFunctionLibrary::SetNiagaraArrayPosition(
+					NiagaraComponent,
+					PositionArray,
+					SpawnLocations
+				);
+			}
+			TotalSpawned = TotalDead;
+		}
 	}
 }
 
 void ASmbPhysicsManager::AddPhysicsParticles(TArray<FVector> InVectors, int32 SpawnCount)
 {
-	FName PositionArray = "SpawnLocations";
-	FName Integer = "InTotalSpawned";
-
+	SpawnLocations = InVectors;
 	TotalDead = SpawnCount;
-
-	if (NiagaraComponent && NiagaraComponent->IsRegistered())
-	{
-		NiagaraComponent->SetVariableInt(Integer,SpawnCount);
-		UNiagaraDataInterfaceArrayFunctionLibrary::SetNiagaraArrayPosition(
-			NiagaraComponent,
-			PositionArray,
-			InVectors
-		);
-	}
 }

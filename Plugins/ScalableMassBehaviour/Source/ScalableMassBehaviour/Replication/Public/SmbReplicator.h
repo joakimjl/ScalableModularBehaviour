@@ -2,7 +2,6 @@
 
 #pragma once
 
-#include "CoreMinimal.h"
 #include "MassReplicationProcessor.h"
 #include "SmbReplicator.generated.h"
 

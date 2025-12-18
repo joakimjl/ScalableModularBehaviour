@@ -82,11 +82,12 @@ void TSmbClientTargetPositionHandler<AgentArrayItem>::SetBubbleMoveTargetFromLoc
 
 	// Only update the Pos and mark the item as dirty if it has changed more than the tolerance
 	const FVector Pos = Location;
-	//if (!Pos.Equals(ReplicatedMoveTarget.TargetLocation, UE::Mass::Replication::PositionReplicateTolerance))
-	//{
-	ReplicatedMoveTarget.TargetLocation = Pos;
-	bMarkDirty = true;
-	//}
+	if (!Pos.Equals(ReplicatedMoveTarget.TargetLocation, UE::Mass::Replication::PositionReplicateTolerance) &&
+		!Pos.Equals(FVector::ZeroVector, UE::Mass::Replication::PositionReplicateTolerance))
+	{
+		ReplicatedMoveTarget.TargetLocation = Pos;
+		bMarkDirty = true;
+	}
 
 	/*
 	const float Yaw = static_cast<float>(FMath::DegreesToRadians(Transform.GetRotation().Rotator().Yaw));
@@ -159,7 +160,8 @@ template<typename AgentArrayItem>
 void TSmbClientTargetPositionHandler<AgentArrayItem>::SetEntityData(FLocationDataFragment& LocationDataFragment, const FSmbReplicatedMoveTarget& ReplicatedMoveTarget)
 {
 	LocationDataFragment.bNewLocation = true;
-	LocationDataFragment.WalkToLocation = ReplicatedMoveTarget.TargetLocation;
+	//UE_LOG(LogTemp, Display, TEXT("New Target Location X: %f Y: %f"),ReplicatedMoveTarget.TargetLocation.X,ReplicatedMoveTarget.TargetLocation.Y);
+	LocationDataFragment.NextLocation = ReplicatedMoveTarget.TargetLocation;
 }
 #endif // UE_REPLICATION_COMPILE_CLIENT_CODE
 
@@ -168,8 +170,14 @@ void TSmbClientTargetPositionHandler<AgentArrayItem>::SetEntityData(FLocationDat
 class FSmbReplicationProcessorWalkTargetHandlerBase
 {
 public:
-	static MASSREPLICATION_API void AddRequirements(FMassEntityQuery& InQuery);
-	MASSREPLICATION_API void CacheFragmentViews(FMassExecutionContext& ExecContext);
+	static SCALABLEMASSBEHAVIOUR_API void AddRequirements(FMassEntityQuery& InQuery)
+	{
+		InQuery.AddRequirement<FLocationDataFragment>(EMassFragmentAccess::ReadWrite);
+	};
+	SCALABLEMASSBEHAVIOUR_API void CacheFragmentViews(FMassExecutionContext& ExecContext)
+	{
+		LocationDataList = ExecContext.GetMutableFragmentView<FLocationDataFragment>();
+	};
 
 protected:
 	TArrayView<FLocationDataFragment> LocationDataList;
@@ -178,7 +186,11 @@ protected:
 class FSmbReplicationProcessorWalkTargetHandler : public FSmbReplicationProcessorWalkTargetHandlerBase
 {
 public:
-	SCALABLEMASSBEHAVIOUR_API void AddEntity(const int32 EntityIdx, FSmbReplicatedMoveTarget& InOUtReplicatedPathData) const;
+	SCALABLEMASSBEHAVIOUR_API void AddEntity(const int32 EntityIdx, FSmbReplicatedMoveTarget& InOutReplicatedPathData) const
+	{
+		const FLocationDataFragment& LocationDataFragment = LocationDataList[EntityIdx];
+		InOutReplicatedPathData.TargetLocation = LocationDataFragment.NextLocation;
+	};
 
 	template<typename AgentArrayItem>
 	void ModifyEntity(const FMassReplicatedAgentHandle Handle, const int32 EntityIdx, TSmbClientTargetPositionHandler<AgentArrayItem>& BubblePathHandler);
@@ -188,6 +200,8 @@ template<typename AgentArrayItem>
 void FSmbReplicationProcessorWalkTargetHandler::ModifyEntity(const FMassReplicatedAgentHandle Handle, const int32 EntityIdx, TSmbClientTargetPositionHandler<AgentArrayItem>& BubblePathHandler)
 {
 	const FLocationDataFragment& LocationDataFragment = LocationDataList[EntityIdx];
+
+	//UE_LOG(LogTemp, Display, TEXT("Bubble view location (server) X: %f Y:  %f"),LocationDataFragment.WalkToLocation.X,LocationDataFragment.WalkToLocation.Y);
 
 	BubblePathHandler.SetBubbleMoveTargetFromLocation(Handle, LocationDataFragment.WalkToLocation);
 }

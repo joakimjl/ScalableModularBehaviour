@@ -4,7 +4,8 @@
 #include "ScalableMassBehaviour/Replication/Public/SmbReplicator.h"
 
 #include "MassExecutionContext.h"
-#include "MassReplicationTransformHandlers.h"
+#include "MassCrowdReplicator.h"
+#include "MassCrowdBubble.h"
 #include "ScalableMassBehaviour/Replication/Public/SmbReplicatedAgent.h"
 #include "ScalableMassBehaviour/Replication/Public/SmbMassClientBubbleInfo.h"
 
@@ -13,39 +14,39 @@
 //----------------------------------------------------------------------//
 void USmbReplicator::AddRequirements(FMassEntityQuery& EntityQuery)
 {
-    FMassReplicationProcessorPositionYawHandler::AddRequirements(EntityQuery);
+    FSmbReplicationProcessorWalkTargetHandler::AddRequirements(EntityQuery);
 }
 
 void USmbReplicator::ProcessClientReplication(FMassExecutionContext& Context, FMassReplicationContext& ReplicationContext)
 {
 #if UE_REPLICATION_COMPILE_SERVER_CODE
 
-    FMassReplicationProcessorPositionYawHandler PositionYawHandler;
+    FSmbReplicationProcessorWalkTargetHandler WalkTargetHandler;
     FMassReplicationSharedFragment* RepSharedFrag = nullptr;
 
-    auto CacheViewsCallback = [&RepSharedFrag, &PositionYawHandler](FMassExecutionContext& Context)
+    auto CacheViewsCallback = [&RepSharedFrag, &WalkTargetHandler](FMassExecutionContext& Context)
     {
-        PositionYawHandler.CacheFragmentViews(Context);
+        WalkTargetHandler.CacheFragmentViews(Context);
         RepSharedFrag = &Context.GetMutableSharedFragment<FMassReplicationSharedFragment>();
         check(RepSharedFrag);
     };
 
-    auto AddEntityCallback = [&RepSharedFrag, &PositionYawHandler](FMassExecutionContext& Context, const int32 EntityIdx, FSmbReplicatedUnitAgent& InReplicatedAgent, const FMassClientHandle ClientHandle) -> FMassReplicatedAgentHandle
+    auto AddEntityCallback = [&RepSharedFrag, &WalkTargetHandler](FMassExecutionContext& Context, const int32 EntityIdx, FSmbReplicatedUnitAgent& InReplicatedAgent, const FMassClientHandle ClientHandle) -> FMassReplicatedAgentHandle
     {
         ASmbUnitClientBubbleInfo& UnitBubbleInfo = RepSharedFrag->GetTypedClientBubbleInfoChecked<ASmbUnitClientBubbleInfo>(ClientHandle);
 
-        PositionYawHandler.AddEntity(EntityIdx, InReplicatedAgent.GetReplicatedPositionYawDataMutable());
+        WalkTargetHandler.AddEntity(EntityIdx, InReplicatedAgent.GetReplicatedMoveTargetDataMutable());
 
         return UnitBubbleInfo.GetUnitSerializer().Bubble.AddAgent(Context.GetEntity(EntityIdx), InReplicatedAgent);
     };
 
-    auto ModifyEntityCallback = [&RepSharedFrag, &PositionYawHandler](FMassExecutionContext& Context, const int32 EntityIdx, const EMassLOD::Type LOD, const double Time, const FMassReplicatedAgentHandle Handle, const FMassClientHandle ClientHandle)
+    auto ModifyEntityCallback = [&RepSharedFrag, &WalkTargetHandler](FMassExecutionContext& Context, const int32 EntityIdx, const EMassLOD::Type LOD, const double Time, const FMassReplicatedAgentHandle Handle, const FMassClientHandle ClientHandle)
     {
         ASmbUnitClientBubbleInfo& UnitBubbleInfo = RepSharedFrag->GetTypedClientBubbleInfoChecked<ASmbUnitClientBubbleInfo>(ClientHandle);
 
         auto& Bubble = UnitBubbleInfo.GetUnitSerializer().Bubble;
 
-        PositionYawHandler.ModifyEntity<FSmbUnitFastArrayItem>(Handle, EntityIdx, Bubble.GetTransformHandlerMutable());
+        WalkTargetHandler.ModifyEntity<FSmbUnitFastArrayItem>(Handle, EntityIdx, Bubble.GetTargetPositionHandlerMutable());
     };
 
     auto RemoveEntityCallback = [&RepSharedFrag](FMassExecutionContext& Context, const FMassReplicatedAgentHandle Handle, const FMassClientHandle ClientHandle)

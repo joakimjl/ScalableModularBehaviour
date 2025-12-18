@@ -64,7 +64,7 @@ void USmbAnimComp::PerformAnimationChange(float DeltaTime)
 	USkeletalMeshComponent* Mesh = Character->GetMesh();
 	if (Character->GetMesh()->GetAnimationMode() != EAnimationMode::AnimationSingleNode)
 	{
-		UE_LOG(LogTemp, Display, TEXT("Changed Mesh"));
+		//UE_LOG(LogTemp, Display, TEXT("Changed Mesh"));
 		Mesh->SetAnimationMode(EAnimationMode::AnimationSingleNode);
 		Character->GetCharacterMovement()->DisableMovement();
 		//Mesh->SetAllBodiesBelowSimulatePhysics(Bone,true,true);

@@ -619,10 +619,10 @@ EStateTreeRunStatus FCheckOwnHealth::Tick(FStateTreeExecutionContext& Context, c
 					,DeathFragment.TotalDeaths
 					,DeathFragment.DeathLocations);
 			}
-			Transform.GetMutableTransform().SetScale3D(FVector(0.001f,0.001f,0.001f));
-			Transform.GetMutableTransform().SetLocation(FVector(0,0,-9999));
+			//Transform.GetMutableTransform().SetScale3D(FVector(0.001f,0.001f,0.001f));
+			//Transform.GetMutableTransform().SetLocation(FVector(0,0,-9999));
 			
-			SmbSubsystem.DestroyEntity(MassStateTreeContext.GetEntity());
+			SmbSubsystem.DestroyDelayed(MassStateTreeContext.GetEntity(), 3.8f);
 		}
 	}
 
@@ -907,6 +907,8 @@ EStateTreeRunStatus FCheckHealthListener::Tick(FStateTreeExecutionContext& Conte
 	InstanceData.CurHealth = DefenceFragment.HP;
 	if (DefenceFragment.HP <= 0.f && Transform.GetTransform().GetLocation() != FVector(0,0,-9999))
 	{
+		if (!DefenceFragment.IsAlive) return EStateTreeRunStatus::Running;
+		DefenceFragment.IsAlive = false;
 		//UE_LOG(LogTemp, Display, TEXT("FCheckHealthListener::Tick, Dead"));
 		FAnimationFragment& AnimationFragment = Context.GetExternalData(AnimationFragmentHandle);
 		USmbSubsystem& SmbSubsystem = Context.GetExternalData(SmbSubsystemHandle);
@@ -926,7 +928,8 @@ EStateTreeRunStatus FCheckHealthListener::Tick(FStateTreeExecutionContext& Conte
 		{
 			FMassInstancedStaticMeshInfoArrayView ISMInfosView = CrowdRepSubsystem.GetMutableInstancedStaticMeshInfos();
 			FMassInstancedStaticMeshInfo ISMInfo = ISMInfosView[MassRepresentationFragment.StaticMeshDescHandle.ToIndex()];
-			if (MassRepresentationFragment.CurrentRepresentation == EMassRepresentationType::HighResSpawnedActor)
+			if (MassRepresentationFragment.CurrentRepresentation == EMassRepresentationType::HighResSpawnedActor ||
+				MassRepresentationFragment.CurrentRepresentation == EMassRepresentationType::LowResSpawnedActor)
 			{
 				SmbSubsystem.DetatchActorSetHealth(MassStateTreeContext.GetEntity());
 			} else
@@ -935,11 +938,11 @@ EStateTreeRunStatus FCheckHealthListener::Tick(FStateTreeExecutionContext& Conte
 					,DeathFragment.TotalDeaths
 					,DeathFragment.DeathLocations);
 			}
-			Transform.GetMutableTransform().SetScale3D(FVector(0.001f,0.001f,0.001f));
-			Transform.GetMutableTransform().SetLocation(FVector(0,0,-9999));
+			//Transform.GetMutableTransform().SetScale3D(FVector(0.001f,0.001f,0.001f));
+			//Transform.GetMutableTransform().SetLocation(FVector(0,0,-9999));
 			
-			SmbSubsystem.DestroyEntity(MassStateTreeContext.GetEntity());
-			return EStateTreeRunStatus::Failed;
+			SmbSubsystem.DestroyDelayed(MassStateTreeContext.GetEntity(),0.11f);
+			return EStateTreeRunStatus::Running;
 		}
 	}
 

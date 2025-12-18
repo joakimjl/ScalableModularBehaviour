@@ -35,6 +35,7 @@
 #include "MassReplicationFragments.h"
 #include "MassObserverNotificationTypes.h"
 #include "MassEntityConfigAsset.h"
+#include "Compression/lz4.h"
 #include "Engine/AssetManager.h"
 #include "ScalableMassBehaviour/Replication/Public/SmbMassClientBubbleInfo.h"
 
@@ -167,6 +168,8 @@ void USmbSubsystem::Deinitialize()
 void USmbSubsystem::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+
+	DestroyStalledEntity(DeltaTime);
 	
 	for (int i = 0; i < AbilitySpawningDataArray.Num(); ++i)
 	{
@@ -432,8 +435,8 @@ bool USmbSubsystem::RegisterProjectileManager(ASmbProjectileHandler* InProjectil
 
 void USmbSubsystem::NewDeath(FString MeshName, int32 TotalDeaths, TArray<FVector> Locations)
 {
-	TArray<FVector> DeathLocations = TArray<FVector>();
-	DeathLocations.Add((Locations[Locations.Num()-1]+FVector::UpVector*10.f));
+	//TArray<FVector> DeathLocations = TArray<FVector>();
+	//DeathLocations.Add((Locations[Locations.Num()-1]+FVector::UpVector*10.f));
 	for (auto PhysicsManagerStruct : PhysicsManagers)
 	{
 		if (PhysicsManagerStruct.MeshName == MeshName){
@@ -650,11 +653,24 @@ bool USmbSubsystem::IsEntityValidManager(FMassEntityHandle Handle) const
 	return EntityManagerPtr->IsEntityValid(Handle);
 }
 
-void USmbSubsystem::DestroyStalledEntity()
+void USmbSubsystem::DestroyDelayed(FMassEntityHandle Handle, float Delay)
+{
+	if (ToDestroy.Contains(Handle)) return;
+	float& Val = ToDestroy.Add(Handle);
+	Val = Delay;
+}
+
+void USmbSubsystem::DestroyStalledEntity(float DeltaTime)
 {
 	if (ToDestroy.Num() <= 0) return;
-	FMassEntityHandle Handle = ToDestroy[0];
-	ToDestroy.RemoveAt(0);
+	for (auto& Element : ToDestroy)
+	{
+		//UE_LOG(LogTemp, Display, TEXT("Destroy delay is %f"), Element.Value);
+		Element.Value -= DeltaTime;
+		if (Element.Value > 0.0f) continue;
+		const FMassEntityHandle Handle =  Element.Key;
+		DestroyEntity(Handle);
+	}
 }
 
 float USmbSubsystem::FindEntityAnimationTime(USmbAnimComp* SmbComponent)
@@ -666,7 +682,15 @@ float USmbSubsystem::FindEntityAnimationTime(USmbAnimComp* SmbComponent)
 		if (!EntityManagerPtr->IsEntityValid(MassAgent->GetEntityHandle())) return 1.f;
 		//FAnimationFragment& AnimationFragment = EntityManagerPtr->GetFragmentDataChecked<FAnimationFragment>(MassAgent->GetEntityHandle());
 		FAnimationFragment* AnimationFragmentPtr = EntityManagerPtr->GetFragmentDataPtr<FAnimationFragment>(MassAgent->GetEntityHandle());
-		if (!AnimationFragmentPtr) return 1.f;
+		if (!AnimationFragmentPtr)
+		{
+			AActor* Actor = SmbComponent->GetOwner();
+			USmbSubsystem* SmbSubsystem = GetWorld()->GetSubsystem<USmbSubsystem>();
+			FSmbEntityData Closest = SmbSubsystem->GetClosestEnemy(Actor->GetActorLocation(),-1,10.f);
+			AnimationFragmentPtr = EntityManagerPtr->GetFragmentDataPtr<FAnimationFragment>(FMassEntityHandle(Closest.Index,Closest.SerialNumber));
+			if (!AnimationFragmentPtr) return -1.f;
+		}
+		
 		return AnimationFragmentPtr->CurrentAnimationFrame;
 	}
 	return -1.f;
@@ -849,28 +873,27 @@ void USmbSubsystem::SpawnAbilityDataDeferred(USmbAbilityData* AbilityData, const
 }
 
 
-void USmbSubsystem::Spawn(UMassEntityConfigAsset* EntityConfig, const FTransform& Transform, int Count)
+void USmbSubsystem::Spawn(UMassEntityConfigAsset* EntityConfig, const TArray<FVector>& Locations, int Count, int32 NewTeam)
 {
 	const FMassEntityTemplate& EntityTemplate = EntityConfig->GetOrCreateEntityTemplate(*GetWorld());
 
 	TArray<FMassEntityHandle> Entities;
+	if (Count < 1) return;
+	if (Locations.Num() <= 0) return;
 	auto CreationContext = EntityManagerPtr->BatchCreateEntities(EntityTemplate.GetArchetype(), EntityTemplate.GetSharedFragmentValues(), Count, Entities);
 	TConstArrayView<FInstancedStruct> FragmentInstances = EntityTemplate.GetInitialFragmentValues();
 	EntityManagerPtr->BatchSetEntityFragmentValues(CreationContext->GetEntityCollections(*EntityManagerPtr.Get()), FragmentInstances);
 
-	int SqrtCount = FMath::Sqrt((float)Count);
-
-	int j = 0;
 	for (int i = 0; i < Entities.Num(); ++i)
 	{
 		FMassEntityView EntityView(EntityTemplate.GetArchetype(), Entities[i]);
 		auto& TransformData = EntityView.GetFragmentData<FTransformFragment>();
+		FTeamFragment* TeamFragment = EntityView.GetFragmentDataPtr<FTeamFragment>();
+		if (TeamFragment && NewTeam != -1) TeamFragment->TeamID = NewTeam;
 
-		FVector RabbitLocation = Transform.GetLocation();
-		RabbitLocation.X = (i % SqrtCount) * 100;
-		if (i % SqrtCount == 0) ++j;
-		RabbitLocation.Y = j * 100;
-		TransformData.SetTransform(FTransform(RabbitLocation));
+		const int32 SelectedLocationIndex = int32(FMath::RandRange(0,Locations.Num()-1));
+		FVector EntityLocation = Locations[SelectedLocationIndex];
+		TransformData.SetTransform(FTransform(EntityLocation));
 	}
 }
 

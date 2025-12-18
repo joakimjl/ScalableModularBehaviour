@@ -875,7 +875,7 @@ UClientMoveProcessor::UClientMoveProcessor()
 {
 	bAutoRegisterWithProcessingPhases = true;
 	ExecutionFlags = (int32)(EProcessorExecutionFlags::Client);
-	ExecutionOrder.ExecuteInGroup = UE::Mass::ProcessorGroupNames::Movement;
+	ExecutionOrder.ExecuteBefore.Add(UE::Mass::ProcessorGroupNames::Movement);
 }
 
 void UClientMoveProcessor::ConfigureQueries(const TSharedRef<FMassEntityManager>& EntityManager)
@@ -883,8 +883,9 @@ void UClientMoveProcessor::ConfigureQueries(const TSharedRef<FMassEntityManager>
 	//FMassEntityQuery EntityQuery(EntityManager);
 
 	EntityQuery.AddRequirement<FTransformFragment>(EMassFragmentAccess::ReadWrite);
-	
-	
+	EntityQuery.AddRequirement<FLocationDataFragment>(EMassFragmentAccess::ReadWrite);
+	EntityQuery.AddRequirement<FMassDesiredMovementFragment>(EMassFragmentAccess::ReadWrite);
+	EntityQuery.AddConstSharedRequirement<FMassMovementParameters>();
 }
 
 void UClientMoveProcessor::Execute(FMassEntityManager& EntityManager, FMassExecutionContext& Context)
@@ -894,6 +895,23 @@ void UClientMoveProcessor::Execute(FMassEntityManager& EntityManager, FMassExecu
 	EntityQuery.ForEachEntityChunk(Context, [DeltaTime](FMassExecutionContext& Context)
 	{
 		TArrayView<FTransformFragment> TransformFragmentView = Context.GetMutableFragmentView<FTransformFragment>();
+		TArrayView<FLocationDataFragment> LocationDataFragmentView = Context.GetMutableFragmentView<FLocationDataFragment>();
+		TArrayView<FMassDesiredMovementFragment> DesiredMovementFragmentsView = Context.GetMutableFragmentView<FMassDesiredMovementFragment>();
+		FMassMovementParameters MovementParameters = Context.GetConstSharedFragment<FMassMovementParameters>();
+		for (FMassExecutionContext::FEntityIterator EntityIt = Context.CreateEntityIterator(); EntityIt; ++EntityIt)
+		{
+			FTransformFragment& TransformFragment = TransformFragmentView[EntityIt];
+			FLocationDataFragment& LocationDataFragment = LocationDataFragmentView[EntityIt];
+			FMassDesiredMovementFragment& DesiredMovementFragment = DesiredMovementFragmentsView[EntityIt];
+
+			if (LocationDataFragment.NextLocation != FVector::ZeroVector)
+			{
+				//UE_LOG(LogTemp, Display, TEXT("New Location"));
+				FTransform MutableTransform = TransformFragment.GetMutableTransform();
+				FVector DesiredDirection = (LocationDataFragment.NextLocation-MutableTransform.GetLocation()).GetSafeNormal();
+				DesiredMovementFragment.DesiredVelocity = MovementParameters.DefaultDesiredSpeed*DesiredDirection;
+			}
+		}
 	});
 }
 
@@ -921,7 +939,9 @@ void UScaleProcessors::Execute(FMassEntityManager& EntityManager, FMassExecution
 {
 	float DeltaTime = FMath::Min(Context.GetDeltaTimeSeconds(),0.2f);
 	
-	EntityQuery.ForEachEntityCh
-
+	ForEachEntityChunk(Context, [DeltaTime](FMassExecutionContext& Context){
+	
+	});
+}
 
 */

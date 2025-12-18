@@ -212,7 +212,7 @@ class USmbSubsystem : public UMassTickableSubsystemBase
 
 public:
 	UFUNCTION(BlueprintCallable, Category = "Smb")
-	void Spawn(UMassEntityConfigAsset* EntityConfig, const FTransform& Transform, int Count = 1);
+	void Spawn(UMassEntityConfigAsset* EntityConfig, const TArray<FVector>& Locations, int Count = 1, int32 NewTeam = -1);
 	
 	UPROPERTY(BlueprintReadWrite, Category = "Smb")
 	float TimeSinceRemoval = 0.f;
@@ -286,6 +286,8 @@ public:
 
 	UFUNCTION()
 	void DestroyEntity(FMassEntityHandle Handle);
+	UFUNCTION()
+	void DestroyDelayed(FMassEntityHandle Handle, float Delay = 0.2f);
 
 	UFUNCTION()
 	void DetatchActorSetHealth(FMassEntityHandle Handle);
@@ -336,16 +338,16 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Smb")
 	bool LoadEntityTemplateConfig(const UMassEntityConfigAsset* ConfigAsset);
 
+	UPROPERTY()
+	TMap<FMassEntityHandle, float> ToDestroy = TMap<FMassEntityHandle, float>();
+
 protected:
 
 	UFUNCTION()
-	void DestroyStalledEntity();
+	void DestroyStalledEntity(float DeltaTime);
 	
 	UPROPERTY()
 	TObjectPtr<UGrid> Grid = TObjectPtr<UGrid>();
-
-	UPROPERTY()
-	TArray<FMassEntityHandle> ToDestroy = TArray<FMassEntityHandle>();
 	
 	TSharedPtr<FMassEntityManager> EntityManagerPtr;
 	UE::Mass::FEntityBuilder* EntityBuilder = nullptr;

@@ -36,8 +36,14 @@ public:
 	UPROPERTY(BlueprintReadWrite, Category = "Smb")
 	int32 TotalDead = 0;
 
+	UPROPERTY(BlueprintReadWrite, Category = "Smb")
+	int32 TotalSpawned = 0;
+
 	UFUNCTION(BlueprintCallable, Category = "Smb")
 	void AddPhysicsParticles(TArray<FVector> InVectors, int32 SpawnCount);
+
+	UPROPERTY(BlueprintReadWrite, Category = "Smb")
+	TArray<FVector> SpawnLocations;
 
 	UPROPERTY(BlueprintReadWrite, Category = "Smb")
 	float InternalDelay = 0.5f;

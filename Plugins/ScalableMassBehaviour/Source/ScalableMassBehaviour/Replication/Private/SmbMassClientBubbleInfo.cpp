@@ -38,7 +38,7 @@ void FSmbUnitClientBubbleHandler::PostReplicatedAdd(const TArrayView<int32> Adde
 #endif //UE_REPLICATION_COMPILE_SERVER_CODE
 
 #if UE_REPLICATION_COMPILE_CLIENT_CODE
-void FSmbUnitClientBubbleHandler::FSmbUnitClientBubbleHandler::PostReplicatedChange(const TArrayView<int32> ChangedIndices, int32 FinalSize)
+void FSmbUnitClientBubbleHandler::PostReplicatedChange(const TArrayView<int32> ChangedIndices, int32 FinalSize)
 {
     auto SetModifiedEntityData = [this](const FMassEntityView& EntityView, const FSmbReplicatedUnitAgent& Item)
     {

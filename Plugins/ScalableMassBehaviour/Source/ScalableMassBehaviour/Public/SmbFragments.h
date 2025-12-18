@@ -215,6 +215,10 @@ struct FDefenceFragment : public FMassFragment
 	/* Armor Type */
 	UPROPERTY(EditAnywhere, Category = "Smb")
 	EArmorType UnitArmor = EArmorType::MediumArmor;
+
+	/* Alive Status */
+	UPROPERTY()
+	bool IsAlive = true;
 };
 
 USTRUCT()
@@ -407,6 +411,10 @@ struct FLocationDataFragment : public FMassFragment
 	/* Location to walk towards (Changes during runtime) */
 	UPROPERTY()
 	FVector WalkToLocation = FVector::ZeroVector;
+
+	/* Next location in NavMesh pathfinding */
+	UPROPERTY()
+	FVector NextLocation = FVector::ZeroVector;
 
 	UPROPERTY()
 	FVector PrevWalkToLocationBeforeAttack = FVector::ZeroVector;
