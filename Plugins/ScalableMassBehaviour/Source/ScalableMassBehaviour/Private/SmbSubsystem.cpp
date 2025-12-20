@@ -75,6 +75,7 @@ void USmbSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 
 void USmbSubsystem::PostInitialize()
 {
+	Super::PostInitialize();
 	auto* ReplicationSubsystem = UWorld::GetSubsystem<UMassReplicationSubsystem>(GetWorld());
 	check(ReplicationSubsystem);
 

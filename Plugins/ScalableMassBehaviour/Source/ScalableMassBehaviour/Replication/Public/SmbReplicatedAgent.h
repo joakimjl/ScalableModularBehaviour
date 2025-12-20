@@ -69,7 +69,7 @@ template<typename AgentArrayItem>
 void TSmbClientTargetPositionHandler<AgentArrayItem>::SetBubbleMoveTargetFromLocation(const FMassReplicatedAgentHandle Handle, const FVector& Location)
 {
 	bool bMarkDirty = false;
-#if ENGINE_MAJOR_VERSION==5 && ENGINE_MINOR_VERSION>=7
+#if ENGINE_MAJOR_VERSION==5 && ENGINE_MINOR_VERSION>=1
 	auto Agent = OwnerHandler.GetAgentChecked(Handle);
 	FSmbReplicatedMoveTarget& ReplicatedMoveTarget = Agent.GetReplicatedMoveTargetDataMutable();
 #else
@@ -105,7 +105,7 @@ void TSmbClientTargetPositionHandler<AgentArrayItem>::SetBubbleMoveTargetFromLoc
 		bMarkDirty = true;
 	}*/
 
-#if ENGINE_MAJOR_VERSION==5 && ENGINE_MINOR_VERSION>=7
+#if ENGINE_MAJOR_VERSION==5 && ENGINE_MINOR_VERSION>=1
 	if (bMarkDirty)
 	{
 		//Mark Dirty
