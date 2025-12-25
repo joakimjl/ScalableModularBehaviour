@@ -656,7 +656,11 @@ bool USmbSubsystem::IsEntityValidManager(FMassEntityHandle Handle) const
 
 void USmbSubsystem::DestroyDelayed(FMassEntityHandle Handle, float Delay)
 {
-	if (ToDestroy.Contains(Handle)) return;
+	if (ToDestroy.Contains(Handle))
+	{
+		ToDestroy[Handle] = Delay;
+		return;
+	}
 	float& Val = ToDestroy.Add(Handle);
 	Val = Delay;
 }
@@ -898,6 +902,13 @@ void USmbSubsystem::Spawn(UMassEntityConfigAsset* EntityConfig, const TArray<FVe
 	}
 }
 
+bool USmbSubsystem::DestroyAgentEntity(UMassAgentComponent* MassAgentComponent)
+{
+	FMassEntityHandle Handle = MassAgentComponent->GetEntityHandle();
+	DestroyEntity(Handle);
+
+	return true;
+}
 
 
 FVector2D USmbSubsystem::VectorToCell(FVector Location)

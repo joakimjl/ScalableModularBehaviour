@@ -14,6 +14,8 @@
 #include "MassEntityConfigAsset.h"
 #include "EditorUtilityActorComponent.h"
 #include "MassCrowdVisualizationTrait.h"
+#include "Framework/Notifications/NotificationManager.h"
+#include "Widgets/Notifications/SNotificationList.h"
 #endif
 
 #include "MassCrowdRepresentationSubsystem.h"
@@ -135,6 +137,19 @@ bool USmbBlueprintLibrary::SetAnimationsInConfig(UMassEntityConfigAsset* MassEnt
 	
 	return false;
 }
+
+
+void USmbBlueprintLibrary::EditorNotifcation(FText Text)
+{
+	FNotificationInfo Info(Text);
+
+	Info.bFireAndForget = true;
+	Info.ExpireDuration = 5.0f;
+	Info.bUseLargeFont = false;
+
+	FSlateNotificationManager::Get().AddNotification(Info);
+}
+
 
 #endif
 

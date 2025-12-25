@@ -341,6 +341,12 @@ public:
 	UPROPERTY()
 	TMap<FMassEntityHandle, float> ToDestroy = TMap<FMassEntityHandle, float>();
 
+	
+	/* To call from blueprint actors when they need to tell mass to instantly destroy the mass handle */
+	UFUNCTION(BlueprintCallable, Category = "Smb")
+	bool DestroyAgentEntity(UMassAgentComponent* MassAgentComponent);
+	
+
 protected:
 
 	UFUNCTION()
